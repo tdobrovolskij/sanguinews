@@ -21,8 +21,8 @@ Adjust it with you favourite text editor. I hope that no explanation will be nee
 
 CREDITS
 =======
-nntp library(crudely modified by me) from http://nntp.rubyforge.org/ project.
-yenc decoder gem by Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend/yenc)
+* nntp library(crudely modified by me) from http://nntp.rubyforge.org/ project.
+* yenc decoder gem by Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend/yenc)
 
 HISTORY
 =======
