@@ -76,7 +76,7 @@ def create_message(message,curpart,parts,crc32,pcrc32,psize,fsize,filename)
   msgstr = <<END_OF_MESSAGE
 From: #{@from}
 Newsgroups: #{@groups}
-Subject: #{@prefix}"#{filename}" yEnc (#{curpart}/#{parts})
+Subject: #{@prefix}#{@dirprefix}"#{filename}" yEnc (#{curpart}/#{parts})
 Date: #{date}
 
 #{headerline}
@@ -121,6 +121,39 @@ def process_and_upload(filepath,length,chunk)
   end
 end
 
+def process(file)
+  puts "Uploading #{file}\n"
+  @fsize = File.size?(file)
+  @chunks = @fsize.to_f / @length
+  @chunks = @chunks.ceil
+  puts "Chunks: " + @chunks.to_s if @verbose
+  @crc32 = file_crc32(file)
+  @basename = File.basename(file)
+  i = 1
+  arr = []
+
+  while i <= @chunks
+    # c = current thread
+    c = i % @threads
+
+    if Thread.list.count <= @threads
+      arr[c] =  Thread.new(i){ |j| process_and_upload(file,@length,j) }
+    else
+      arr[c].join if ! arr[c].nil?
+      redo
+    end
+    puts "Current thread count: " + Thread.list.count.to_s if @verbose
+    i += 1
+  end
+
+  # Wait for all threads to finish
+  arr.each do |t|
+    t.join if ! t.nil?
+  end
+
+  puts
+end
+
 # Parse options in config file
 config = "~/.sanguinews.conf"
 config = File.expand_path(config)
@@ -140,6 +173,7 @@ config.get_params()
 @delay = config['reconnect_delay'].to_i
 @groups = config['groups']
 @prefix = config['prefix']
+@dirprefix = ''
 ssl = config['ssl']
 if ssl == 'yes'
   @mode = :tls
@@ -175,51 +209,40 @@ end
 
 opt_parser.parse!
 
-puts options
-
 file = options[:file].to_s
 password = options[:password]
 username = options[:username]
 options[:verbose] ? @verbose = true : @verbose = false
 
-#puts ARGV
-#exit
-
 @username = username if ! username.nil?
 @password = password if ! password.nil?
+directory = ARGV[0] if ! ARGV.nil?
 
-if !File.file?(file) and !Dir.exist?(ARGV)
+files = []
+files << file if File.file?(file)
+dirmode = false
+
+if !File.file?(file) and !Dir.exist?(directory)
   puts "Nothing to upload!"
   exit
 end
-
-#  yencmsg.encode!('UTF-8')
-@fsize = File.size?(file)
-@chunks = @fsize.to_f / @length
-@chunks = @chunks.ceil
-puts "Chunks: " + @chunks.to_s if @verbose
-@crc32 = file_crc32(file)
-@basename = File.basename(file)
-i = 1
-arr = []
-
-while i <= @chunks
-  # c = current thread
-  c = i % @threads
-
-  if Thread.list.count <= @threads
-    arr[c] =  Thread.new(i){ |j| process_and_upload(file,@length,j) }
-  else
-    arr[c].join if ! arr[c].nil?
-    redo
+if !File.file?(file) and Dir.exist?(directory)
+  directory = directory + "/" if !directory.end_with?('/')
+  dirmode = true
+  Dir.foreach(directory) do |item|
+    next if item.start_with?('.')
+    files << directory+item
   end
-  puts "Current thread count: " + Thread.list.count.to_s if @verbose
+end
+
+max = files.length
+i = 1
+files.each do |file|
+  if dirmode
+    dirname = File.basename(directory)
+    @dirprefix = dirname + " [#{i}/#{max}] - "
+  end
+  process(file)
   i += 1
 end
 
-# Wait for all threads to finish
-arr.each do |t|
-  t.join if ! t.nil?
-end
-
-puts
