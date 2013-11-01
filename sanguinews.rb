@@ -34,7 +34,7 @@ require 'parseconfig'
 require 'zlib'
 # Following non-standard gems are needed
 load 'lib/nntp.rb'
-load 'lib/y_enc'
+load 'lib/y_enc.rb'
 #require 'y_enc'
 
 # Method returns yenc encoded string and crc32 value
