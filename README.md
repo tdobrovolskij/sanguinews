@@ -16,8 +16,17 @@ Copy and rename sample.conf to your home directory:
     cp sample.conf ~/.sanguinews.conf
 
 Adjust it with you favourite text editor. I hope that no explanation will be needed.
+To upload a file:
 
     ./sanguinews.rb -f file_to_upload
+
+To upload a directory:
+
+    ./sanguinews.rb /path/to/directory
+
+View help:
+
+    ./sanguinews.rb --help
 
 CREDITS
 =======
@@ -26,4 +35,5 @@ CREDITS
 
 HISTORY
 =======
+* 0.2 - Directories can be uploaded as well.
 * 0.1 - Initial release; Only file mode exists
