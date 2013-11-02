@@ -25,7 +25,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.22'
+@version = '0.30'
 
 require 'date'
 require 'tempfile'
@@ -80,6 +80,7 @@ def create_message(message,curpart,parts,crc32,pcrc32,psize,fsize,filename)
 From: #{@from}
 Newsgroups: #{@groups}
 Subject: #{@prefix}#{@dirprefix}"#{filename}" yEnc (#{curpart}/#{parts})
+X-Newsposter: sanguinews v#{@version} (ruby) - https://github.com/tdobrovolskij/sanguinews
 Date: #{date}
 
 #{headerline}
