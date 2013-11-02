@@ -36,8 +36,8 @@ require 'parseconfig'
 require 'zlib'
 # Following non-standard gems are needed
 require 'nzb'
-load 'lib/nntp.rb'
-load 'lib/y_enc.rb'
+load "#{File.dirname(__FILE__)}/lib/nntp.rb"
+load "#{File.dirname(__FILE__)}/lib/y_enc.rb"
 #require 'y_enc'
 
 # Method returns yenc encoded string and crc32 value
