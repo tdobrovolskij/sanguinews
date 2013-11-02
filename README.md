@@ -35,5 +35,6 @@ CREDITS
 
 HISTORY
 =======
-* 0.2 - Directories can be uploaded as well.
-* 0.1 - Initial release; Only file mode exists
+* 0.22 - Less verbosity in normal mode. More helpful help.
+* 0.20 - Directories can be uploaded as well.
+* 0.10 - Initial release; Only file mode exists
