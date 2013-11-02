@@ -109,7 +109,7 @@ def process_and_upload(filepath,length,chunk)
       nntp.post msg
     end
   rescue
-    puts $!, $@
+    puts $!, $@ if @verbose
     puts "Upload of chunk " + chunk.to_s + "from file #{@basename} unsuccesful. Retrying..." if @verbose
     sleep @delay
     retry
