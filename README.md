@@ -1,13 +1,13 @@
 sanguinews
 ==========
 
-Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler(https://github.com/madcowfred/newsmangler). It's written entirely in ruby. Supports multithreading and SSL.
+Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler(https://github.com/madcowfred/newsmangler). Sanguinews is written entirely in ruby. Supports multithreading and SSL.
 
 INSTALLATION
 ============
 Use git clone to get the newest version:
 
-    git clone git://github.com/tdobrovolskij/sanguinews.git
+    git clone https://github.com/tdobrovolskij/sanguinews.git
 
 Install nzb gem for nzb file creation:
 
