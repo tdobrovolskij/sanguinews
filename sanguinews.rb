@@ -35,6 +35,7 @@ require 'parseconfig'
 # Needed for crc32 calculation
 require 'zlib'
 # Following non-standard gems are needed
+require 'nzb'
 load 'lib/nntp.rb'
 load 'lib/y_enc.rb'
 #require 'y_enc'
@@ -100,6 +101,7 @@ end
 # Method processes the file and uploads result
 def process_and_upload(filepath,length,chunk)
   yencmsg = ''
+  response = ''
   yenced = yencode(filepath,length,chunk)
   yencmsg = yenced[0]
   pcrc32 = yenced[1]
@@ -108,7 +110,7 @@ def process_and_upload(filepath,length,chunk)
   msg = create_message(yencmsg, chunk, @chunks, @crc32, pcrc32, length, @fsize, @basename)
   begin
     Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
-      nntp.post msg
+      response = nntp.post msg
     end
   rescue
     puts $!, $@ if @verbose
@@ -120,6 +122,15 @@ def process_and_upload(filepath,length,chunk)
     puts "Uploaded chunk Nr:" + chunk.to_s
   else
     putc "."
+  end
+  if @nzb
+    msgid = ''
+    response.each do |r|
+      msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
+    end
+    @lock.lock
+    @nzb.write_segment(msg.length,chunk,msgid)
+    @lock.unlock
   end
 end
 
@@ -133,13 +144,19 @@ def process(file)
   @basename = File.basename(file)
   i = 1
   arr = []
+  subject = "#{@prefix}#{@dirprefix}#{@basename} yEnc (#{i}/#{@chunks})"
+  puts subject
+  @nzb.write_file_header(@from,subject,@groups) if @nzb
+  @lock=Mutex.new
 
   while i <= @chunks
     # c = current thread
     c = i % @threads
 
     if Thread.list.count <= @threads
-      arr[c] =  Thread.new(i){ |j| process_and_upload(file,@length,j) }
+      arr[c] =  Thread.new(i){ |j| 
+        process_and_upload(file,@length,j)
+      }
     else
       arr[c].join if ! arr[c].nil?
       redo
@@ -154,6 +171,7 @@ def process(file)
   end
 
   puts
+  @nzb.write_file_footer if @nzb
 end
 
 # Parse options in config file
@@ -182,6 +200,8 @@ if ssl == 'yes'
 else
   @mode = :original
 end
+@nzb = false
+@nzb = true if config['nzb'] == 'yes'
 
 # version and legal info presented to user
 banner = []
@@ -250,12 +270,23 @@ end
 
 max = files.length
 i = 1
-files.each do |file|
-  if dirmode
-    dirname = File.basename(directory)
-    @dirprefix = dirname + " [#{i}/#{max}] - "
+if dirmode
+  dirname = File.basename(directory)
+  if @nzb
+    @nzb = Nzb.new(dirname,"sanguinews_")
+    @nzb.write_header
   end
+else
+  if @nzb
+    basename = File.basename(file)
+    @nzb = Nzb.new(basename,"sanguinews_")
+    @nzb.write_header
+  end
+end
+files.each do |file|
+  @dirprefix = dirname + " [#{i}/#{max}] - " if dirmode
   process(file)
   i += 1
 end
 
+@nzb.write_footer if @nzb
