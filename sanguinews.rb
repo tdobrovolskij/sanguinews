@@ -25,6 +25,8 @@ rescue Gem::LoadError
   # not installed
 end
 
+@version = '0.22'
+
 require 'date'
 require 'tempfile'
 require 'rubygems'
@@ -181,19 +183,30 @@ else
   @mode = :original
 end
 
+# version and legal info presented to user
+banner = []
+banner << ""
+banner << "sanguinews v#{@version}. Copyright (c) 2013 Tadeus Dobrovolskij."
+banner << "Comes with ABSOLUTELY NO WARRANTY. Distributed under GPL v2 license(http://www.gnu.org/licenses/gpl-2.0.txt)."
+banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multithreading and SSL. More info in README."
+banner << ""
 # option parser
 options = {}
 
 opt_parser = OptionParser.new do |opt|
-  opt.banner = "Usage: #{$0} [OPTIONS]"
+  opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY]"
   opt.separator  ""
   opt.separator  "Options"
 
-  opt.on("-f","--file FILE","upload FILE") do |file|
+  opt.on("-f","--file FILE","upload FILE, not a directory") do |file|
     options[:file] = file
   end
   opt.on("-h","--help","help") do
+    banner.each do |msg|
+      puts msg
+    end
     puts opt_parser
+    puts
     exit
   end
   opt.on("-p","--password PASSWORD","use PASSWORD as your password(overwrites config file)") do |password|
