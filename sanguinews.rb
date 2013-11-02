@@ -17,6 +17,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 # We will be using nntp and yEnc gems
+
+# TODO: implement normal check for installed gems
 begin
   gem "yEnc", ">=0.0.30"
   gem "nntp"
@@ -25,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.30'
+@version = '0.32'
 
 require 'date'
 require 'tempfile'
@@ -213,14 +215,18 @@ banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multit
 banner << ""
 # option parser
 options = {}
+dirmode = true
+filemode = false
 
 opt_parser = OptionParser.new do |opt|
-  opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY]"
+  opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY] | -f FILE1..[FILEX]"
   opt.separator  ""
   opt.separator  "Options"
 
-  opt.on("-f","--file FILE","upload FILE, not a directory") do |file|
+  opt.on("-f","--file FILE","upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
+    filemode = true
+    dirmode = false
   end
   opt.on("-h","--help","help") do
     banner.each do |msg|
@@ -243,51 +249,56 @@ end
 
 opt_parser.parse!
 
-file = options[:file].to_s
+files = []
 password = options[:password]
 username = options[:username]
 options[:verbose] ? @verbose = true : @verbose = false
+files << options[:file].to_s if filemode
 
 @username = username if ! username.nil?
 @password = password if ! password.nil?
-directory = ARGV[0] if ! ARGV.nil?
-
-files = []
-files << file if File.file?(file)
-dirmode = false
-
-if !File.file?(file) and !Dir.exist?(directory)
-  puts "Nothing to upload!"
-  exit
+directory = ARGV[0] if dirmode
+# in file mode treat every additional parameter as a file
+if !ARGV.empty? and filemode
+  ARGV.each do |file|
+    files << file.to_s
+  end
 end
-if !File.file?(file) and Dir.exist?(directory)
+
+# skip hidden files
+if dirmode
   directory = directory + "/" if !directory.end_with?('/')
-  dirmode = true
   Dir.foreach(directory) do |item|
     next if item.start_with?('.')
     files << directory+item
   end
 end
 
+# "max" is needed only in dirmode
 max = files.length
 i = 1
+# for dirmode nzb file's header should be written before we start processing
 if dirmode
   dirname = File.basename(directory)
   if @nzb
     @nzb = Nzb.new(dirname,"sanguinews_")
     @nzb.write_header
   end
-else
-  if @nzb
-    basename = File.basename(file)
-    @nzb = Nzb.new(basename,"sanguinews_")
-    @nzb.write_header
-  end
 end
 files.each do |file|
+  if filemode
+    if @nzb
+      basename = File.basename(file)
+      @nzb = Nzb.new(basename,"sanguinews_")
+      @nzb.write_header
+    end
+  end
+
+  next if !File.exist?(file)
   @dirprefix = dirname + " [#{i}/#{max}] - " if dirmode
   process(file)
+  @nzb.write_footer if @nzb and filemode
   i += 1
 end
 
-@nzb.write_footer if @nzb
+@nzb.write_footer if @nzb and dirmode

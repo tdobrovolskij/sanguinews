@@ -9,9 +9,11 @@ Use git clone to get the newest version:
 
     git clone https://github.com/tdobrovolskij/sanguinews.git
 
-Install nzb gem for nzb file creation:
-
-    gem install nzb
+Some gems are required:
+```
+gem install nzb
+gem install parseconfig
+```
 
 How to use
 ==========
@@ -39,6 +41,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.32 - Multiple files can be specified. 
 * 0.30 - Nzb files can now be generated.
 * 0.22 - Less verbosity in normal mode. More helpful help.
 * 0.20 - Directories can be uploaded as well.
