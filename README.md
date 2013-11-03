@@ -43,6 +43,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.34 - No more errors if there is at least one config.
 * 0.33 - There is now an option to specify config file.
 * 0.32 - Multiple files can be specified. 
 * 0.30 - Nzb files can now be generated.
