@@ -263,6 +263,7 @@ password = options[:password]
 username = options[:username]
 
 optconfig = options[:config]
+optconfig = '' if optconfig.nil?
 if !File.exist?(optconfig) && !saw_config
   puts "No config information specified. Aborting..."
   exit
