@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.36'
+@version = '0.37'
 
 require 'date'
 require 'tempfile'
@@ -321,6 +321,7 @@ if dirmode
   end
 end
 files.each do |file|
+  next if !File.file?(file)
   if filemode
     if @nzb
       basename = File.basename(file)
@@ -329,7 +330,6 @@ files.each do |file|
     end
   end
 
-  next if !File.exist?(file)
   @dirprefix = dirname + " [#{i}/#{max}] - " if dirmode
   process(file)
   @nzb.write_footer if @nzb and filemode
