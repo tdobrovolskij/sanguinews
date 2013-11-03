@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.35'
+@version = '0.36'
 
 require 'date'
 require 'tempfile'
@@ -39,24 +39,40 @@ require 'zlib'
 # Following non-standard gems are needed
 require 'nzb'
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
-load "#{File.dirname(__FILE__)}/lib/y_enc.rb"
+#load "#{File.dirname(__FILE__)}/lib/y_enc.rb"
 #require 'y_enc'
+
+def encode_in_memory(bindata)
+  sio = StringIO.new("","w:ASCII-8BIT")
+  bindata.force_encoding('ASCII-8BIT')
+  i = 0
+  bindata.each_byte do |b|
+    char_to_write = (b + 42) % 256
+    if [0, 10, 13, 61].include?(char_to_write)
+      sio.putc '='
+      char_to_write = (char_to_write + 64) % 256
+    end
+    sio.putc char_to_write
+    if i == 127
+      sio.puts "\n"
+      i = 0
+    else
+      i += 1
+    end
+  end
+  result = sio.string
+  sio.close
+  return result
+end
 
 # Method returns yenc encoded string and crc32 value
 def yencode(filepath,length,partnumber)
   offset = (partnumber - 1) * length
   puts "Offset: " + offset.to_s if @verbose
   bindata = IO.binread(filepath,length,offset)
-  tmpfile = Tempfile.new('sanguinews')
-  tmpfile.binmode
-  tmppath = tmpfile.path
-  IO.binwrite(tmpfile,bindata)
-  y = YEnc.new(tmppath,"./")
-  yencoded = y.encode
-  crc = file_crc32(tmppath)
+  yencoded = encode_in_memory(bindata)
+  crc = Zlib.crc32(bindata,0).to_s(16)
   result = [ yencoded, crc ]
-  tmpfile.close
-  tmpfile.unlink
   return result
 end
 
@@ -117,7 +133,7 @@ def process_and_upload(filepath,length,chunk)
     end
   rescue
     puts $!, $@ if @verbose
-    puts "Upload of chunk " + chunk.to_s + "from file #{@basename} unsuccesful. Retrying..." if @verbose
+    puts "Upload of chunk " + chunk.to_s + " from file #{@basename} unsuccesful. Retrying..." if @verbose
     sleep @delay
     retry
   end
