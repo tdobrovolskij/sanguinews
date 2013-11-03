@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.32'
+@version = '0.33'
 
 require 'date'
 require 'tempfile'
@@ -177,34 +177,40 @@ def process(file)
   @nzb.write_file_footer if @nzb
 end
 
+def parse_config(config)
+  config = ParseConfig.new(config)
+  config.get_params()
+  @username = config['username']
+  @password = config['password']
+  @from = config['from']
+  @server = config['server']
+  @port = config['port']
+  @threads = config['connections'].to_i
+  @length = config['article_size'].to_i
+  @delay = config['reconnect_delay'].to_i
+  @groups = config['groups']
+  @prefix = config['prefix']
+  @dirprefix = ''
+  ssl = config['ssl']
+  if ssl == 'yes'
+    @mode = :tls
+  else
+    @mode = :original
+  end
+  @nzb = false
+  @nzb = true if config['nzb'] == 'yes'
+end
+
+
 # Parse options in config file
 config = "~/.sanguinews.conf"
 config = File.expand_path(config)
-if ! File.exist?(config)
-  puts "Config file does not exist. Aborting..."
-  exit
+# variable to store if config was parsed
+saw_config = false
+if File.exist?(config)
+  saw_config = true
+  parse_config(config)
 end
-config = ParseConfig.new(config)
-config.get_params()
-@username = config['username']
-@password = config['password']
-@from = config['from']
-@server = config['server']
-@port = config['port']
-@threads = config['connections'].to_i
-@length = config['article_size'].to_i
-@delay = config['reconnect_delay'].to_i
-@groups = config['groups']
-@prefix = config['prefix']
-@dirprefix = ''
-ssl = config['ssl']
-if ssl == 'yes'
-  @mode = :tls
-else
-  @mode = :original
-end
-@nzb = false
-@nzb = true if config['nzb'] == 'yes'
 
 # version and legal info presented to user
 banner = []
@@ -223,6 +229,9 @@ opt_parser = OptionParser.new do |opt|
   opt.separator  ""
   opt.separator  "Options"
 
+  opt.on("-c","--config CONFIG","use different config file") do |config|
+    options[:config] = config
+  end
   opt.on("-f","--file FILE","upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
     filemode = true
@@ -252,6 +261,14 @@ opt_parser.parse!
 files = []
 password = options[:password]
 username = options[:username]
+
+optconfig = options[:config]
+if !File.exist?(optconfig) && !saw_config
+  puts "No config information specified. Aborting..."
+  exit
+end
+parse_config(optconfig) if File.exist?(optconfig)
+
 options[:verbose] ? @verbose = true : @verbose = false
 files << options[:file].to_s if filemode
 
