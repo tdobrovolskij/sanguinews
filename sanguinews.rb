@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.33'
+@version = '0.35'
 
 require 'date'
 require 'tempfile'
@@ -161,6 +161,7 @@ def process(file)
         process_and_upload(file,@length,j)
       }
     else
+      arr[c].priority += 1 if ! arr[c].nil?
       arr[c].join if ! arr[c].nil?
       redo
     end
