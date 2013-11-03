@@ -43,6 +43,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.36 - yEnc encoding is done fully in memory.
 * 0.35 - Minor performance tweaks.
 * 0.34 - No more errors if there is at least one config.
 * 0.33 - There is now an option to specify config file.
