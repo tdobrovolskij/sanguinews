@@ -14,6 +14,8 @@ Some gems are required:
 gem install nzb
 gem install parseconfig
 ```
+Update process is pretty much straightforward:
+    cd sanguinews && git pull
 
 How to use
 ==========
