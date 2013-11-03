@@ -43,6 +43,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.33 - There is now an option to specify config file.
 * 0.32 - Multiple files can be specified. 
 * 0.30 - Nzb files can now be generated.
 * 0.22 - Less verbosity in normal mode. More helpful help.
