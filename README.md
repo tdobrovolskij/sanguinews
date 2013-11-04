@@ -44,6 +44,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.41 - Excess parts aren't uploaded anymore.
 * 0.40 - Performance problems resolved.
 * 0.38 - Stable upload speed achieved.
 * 0.37 - Subdirectories cause no more crashes, if present in a uploaded directory.
