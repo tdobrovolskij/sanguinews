@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.38'
+@version = '0.40'
 
 require 'date'
 require 'tempfile'
@@ -68,18 +68,20 @@ end
 # Method returns yenc encoded string and crc32 value
 def yencode(filepath,length)
   i = 0
-  result = Array.new
+  #result = Array.new
   File.open(filepath,"rb") do |f|
     until f.eof?
       bindata = f.read(length)
-      result[i] = Array.new
-      result[i][0] = encode_in_memory(bindata)
-      result[i][1] = Zlib.crc32(bindata,0).to_s(16)
+      @lock.lock
+      @messages[i] = Array.new
+      @messages[i][0] = encode_in_memory(bindata)
+      @messages[i][1] = Zlib.crc32(bindata,0).to_s(16)
       i += 1
+      @lock.unlock
     end
   end
 #  result = [ yencoded, crc ]
-  return result
+  #return result
 end
 
 # Method creates message according to yenc specifications
@@ -204,28 +206,34 @@ def process(file)
   puts subject
   @nzb.write_file_header(@from,subject,@groups) if @nzb
   @lock=Mutex.new
+  @messages = []
   done = 0
-
-  messages = yencode(file,@length)
-  messages.each do |m|
-    while done < @chunks
-      puts "Current thread count: " + Thread.list.count.to_s if @verbose
-      if Thread.list.count <= @threads
+  
+  arr[i] = Thread.new { yencode(file,@length) }
+  arr[i].priority += 1
+  while done < @chunks
+    if !@messages.empty?
+        puts "Current thread count: " + Thread.list.count.to_s if @verbose
+      if Thread.list.count <= @threads + 1
+	@lock.lock
 	i += 1
+        message = @messages[0][0].force_encoding('ASCII-8BIT')
+	pcrc32 = @messages[0][1]
+	@messages.drop(1)
+	@lock.unlock
         arr[i] =  Thread.new(i){ |j| 
-          message = m[0].force_encoding('ASCII-8BIT')
-	  pcrc32 = m[1]
 	  upload(message,@length,pcrc32,j)
 	  sleep 0.5
 	  done += 1
         }
       else
-	sleep 1
-        redo
+        sleep 1
       end
+    else
+      sleep 1
     end
-
   end
+
 
   # Wait for all threads to finish
   arr.each do |t|
