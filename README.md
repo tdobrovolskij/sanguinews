@@ -44,6 +44,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.40 - Performance problems resolved.
 * 0.38 - Stable upload speed achieved.
 * 0.37 - Subdirectories cause no more crashes, if present in a uploaded directory.
 * 0.36 - yEnc encoding is done fully in memory.
