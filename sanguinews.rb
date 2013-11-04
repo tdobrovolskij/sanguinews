@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.37'
+@version = '0.38'
 
 require 'date'
 require 'tempfile'
