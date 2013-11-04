@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.40'
+@version = '0.41'
 
 require 'date'
 require 'tempfile'
@@ -213,24 +213,30 @@ def process(file)
   arr[i].priority += 1
   while done < @chunks
     if !@messages.empty?
-        puts "Current thread count: " + Thread.list.count.to_s if @verbose
-      if Thread.list.count <= @threads + 1
+      puts "Current thread count: " + Thread.list.count.to_s if @verbose
+      if Thread.list.count <= @threads + 1 and !@messages.empty?
 	@lock.lock
-	i += 1
         message = @messages[0][0].force_encoding('ASCII-8BIT')
 	pcrc32 = @messages[0][1]
 	@messages.drop(1)
+	i += 1
 	@lock.unlock
-        arr[i] =  Thread.new(i){ |j| 
-	  upload(message,@length,pcrc32,j)
-	  sleep 0.5
-	  done += 1
-        }
+	if i <= @chunks
+          arr[i] =  Thread.new(i){ |j|
+	    upload(message,@length,pcrc32,j)
+	    sleep 0.5
+	    @lock.lock
+	    done += 1
+	    @lock.unlock
+          }
+	else
+          sleep 0.5
+	end
       else
-        sleep 1
+        sleep 0.5
       end
     else
-      sleep 1
+      sleep 0.5
     end
   end
 
