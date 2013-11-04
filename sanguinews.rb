@@ -66,13 +66,22 @@ def encode_in_memory(bindata)
 end
 
 # Method returns yenc encoded string and crc32 value
-def yencode(filepath,length,partnumber)
-  offset = (partnumber - 1) * length
-  puts "Offset: " + offset.to_s if @verbose
-  bindata = IO.binread(filepath,length,offset)
-  yencoded = encode_in_memory(bindata)
-  crc = Zlib.crc32(bindata,0).to_s(16)
-  result = [ yencoded, crc ]
+def yencode(filepath,length)
+#  offset = (partnumber - 1) * length
+#  puts "Offset: " + offset.to_s if @verbose
+#  bindata = IO.binread(filepath,length,offset)
+  i = 0
+  result = Array.new
+  File.open(filepath,"rb") do |f|
+    until f.eof?
+      bindata = f.read(length)
+      result[i] = Array.new
+      result[i][0] = encode_in_memory(bindata)
+      result[i][1] = Zlib.crc32(bindata,0).to_s(16)
+      i += 1
+    end
+  end
+#  result = [ yencoded, crc ]
   return result
 end
 
@@ -116,6 +125,46 @@ def file_crc32 filepath
   File.open( filepath, "rb") { |h| f = h.read }
   Zlib.crc32(f,0).to_s(16)
 end
+
+## process the message and return array of arrays [0] - message, [1] - crc32
+#def process(filepath,length)
+#  yencmsg = ''
+#  yenced = yencode(filepath,length,chunk)
+#  yencmsg = yenced[0]
+#  pcrc32 = yenced[1]
+#  yencmsg.force_encoding('ASCII-8BIT')
+#end
+
+def upload(message,length,pcrc32,chunk)
+  response = ''
+# usenet works with ASCII
+  msg = create_message(message, chunk, @chunks, @crc32, pcrc32, length, @fsize, @basename)
+  begin
+    Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
+      response = nntp.post msg
+    end
+  rescue
+    puts $!, $@ if @verbose
+    puts "Upload of chunk " + chunk.to_s + " from file #{@basename} unsuccesful. Retrying..." if @verbose
+    sleep @delay
+    retry
+  end
+  if @verbose
+    puts "Uploaded chunk Nr:" + chunk.to_s
+  else
+    putc "."
+  end
+  if @nzb
+    msgid = ''
+    response.each do |r|
+      msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
+    end
+    @lock.lock
+    @nzb.write_segment(msg.length,chunk,msgid)
+    @lock.unlock
+  end
+end
+
 
 # Method processes the file and uploads result
 def process_and_upload(filepath,length,chunk)
@@ -161,28 +210,35 @@ def process(file)
   puts "Chunks: " + @chunks.to_s if @verbose
   @crc32 = file_crc32(file)
   @basename = File.basename(file)
-  i = 1
+  i = 0
   arr = []
   subject = "#{@prefix}#{@dirprefix}#{@basename} yEnc (#{i}/#{@chunks})"
   puts subject
   @nzb.write_file_header(@from,subject,@groups) if @nzb
   @lock=Mutex.new
 
-  while i <= @chunks
+  messages = yencode(file,@length)
+  messages.each do |m|
+    while i <= @chunks
     # c = current thread
-    c = i % @threads
-
-    if Thread.list.count <= @threads
-      arr[c] =  Thread.new(i){ |j| 
-        process_and_upload(file,@length,j)
-      }
-    else
-      arr[c].priority += 1 if ! arr[c].nil?
-      arr[c].join if ! arr[c].nil?
-      redo
+      c = i % @threads
+      if Thread.list.count <= @threads
+        arr[c] =  Thread.new(i){ |j| 
+          message = m[0].force_encoding('ASCII-8BIT')
+	  pcrc32 = m[1]
+	  upload(message,@length,pcrc32,j)
+	  sleep 1
+        }
+      else
+        arr[c].priority += 1 if ! arr[c].nil?
+        arr[c].join if ! arr[c].nil?
+	sleep 1
+        redo
+      end
+      puts "Current thread count: " + Thread.list.count.to_s if @verbose
+      i += 1
     end
-    puts "Current thread count: " + Thread.list.count.to_s if @verbose
-    i += 1
+
   end
 
   # Wait for all threads to finish
