@@ -67,9 +67,6 @@ end
 
 # Method returns yenc encoded string and crc32 value
 def yencode(filepath,length)
-#  offset = (partnumber - 1) * length
-#  puts "Offset: " + offset.to_s if @verbose
-#  bindata = IO.binread(filepath,length,offset)
   i = 0
   result = Array.new
   File.open(filepath,"rb") do |f|
@@ -125,15 +122,6 @@ def file_crc32 filepath
   File.open( filepath, "rb") { |h| f = h.read }
   Zlib.crc32(f,0).to_s(16)
 end
-
-## process the message and return array of arrays [0] - message, [1] - crc32
-#def process(filepath,length)
-#  yencmsg = ''
-#  yenced = yencode(filepath,length,chunk)
-#  yencmsg = yenced[0]
-#  pcrc32 = yenced[1]
-#  yencmsg.force_encoding('ASCII-8BIT')
-#end
 
 def upload(message,length,pcrc32,chunk)
   response = ''
@@ -212,31 +200,29 @@ def process(file)
   @basename = File.basename(file)
   i = 0
   arr = []
-  subject = "#{@prefix}#{@dirprefix}#{@basename} yEnc (#{i}/#{@chunks})"
+  subject = "#{@prefix}#{@dirprefix}#{@basename} yEnc (1/#{@chunks})"
   puts subject
   @nzb.write_file_header(@from,subject,@groups) if @nzb
   @lock=Mutex.new
+  done = 0
 
   messages = yencode(file,@length)
   messages.each do |m|
-    while i <= @chunks
-    # c = current thread
-      c = i % @threads
+    while done < @chunks
+      puts "Current thread count: " + Thread.list.count.to_s if @verbose
       if Thread.list.count <= @threads
-        arr[c] =  Thread.new(i){ |j| 
+	i += 1
+        arr[i] =  Thread.new(i){ |j| 
           message = m[0].force_encoding('ASCII-8BIT')
 	  pcrc32 = m[1]
 	  upload(message,@length,pcrc32,j)
-	  sleep 1
+	  sleep 0.5
+	  done += 1
         }
       else
-        arr[c].priority += 1 if ! arr[c].nil?
-        arr[c].join if ! arr[c].nil?
 	sleep 1
         redo
       end
-      puts "Current thread count: " + Thread.list.count.to_s if @verbose
-      i += 1
     end
 
   end
