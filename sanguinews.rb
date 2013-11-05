@@ -54,7 +54,7 @@ def encode_in_memory(bindata)
       char_to_write = (char_to_write + 64) % 256
     end
     sio.putc char_to_write
-    if i == 127
+    if i == 128
       sio.puts "\n"
       i = 0
     else
