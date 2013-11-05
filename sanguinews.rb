@@ -39,6 +39,7 @@ require 'zlib'
 # Following non-standard gems are needed
 require 'nzb'
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
+load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
 #load "#{File.dirname(__FILE__)}/lib/y_enc.rb"
 #require 'y_enc'
 
@@ -80,41 +81,6 @@ def yencode(filepath,length)
       @lock.unlock
     end
   end
-#  result = [ yencoded, crc ]
-  #return result
-end
-
-# Method creates message according to yenc specifications
-# returns string
-def create_message(message,curpart,parts,crc32,pcrc32,psize,fsize,filename)
-  chunk_start = ((curpart - 1) * psize) + 1
-  chunk_end = curpart * psize
-  if (parts==1)
-    headerline = "=ybegin line=128 size=#{fsize} name=#{filename}"
-    trailer = "=yend size=#{fsize} crc32=#{crc32}"
-  else
-    headerline = "=ybegin part=#{curpart} total=#{parts} line=128 size=#{fsize} name=#{filename}\n=ypart begin=#{chunk_start} end=#{chunk_end}"
-# last part
-    if (curpart == parts)
-      trailer = "=yend size=#{psize} part=#{curpart} pcrc32=#{pcrc32} crc32=#{crc32}"
-    else
-      trailer = "=yend size=#{psize} part=#{curpart} pcrc32=#{pcrc32}"
-    end
-  end
-  date = DateTime.now().strftime(fmt='%a, %d %b %Y %T %z')
-  msgstr = <<END_OF_MESSAGE
-From: #{@from}
-Newsgroups: #{@groups}
-Subject: #{@prefix}#{@dirprefix}"#{filename}" yEnc (#{curpart}/#{parts})
-X-Newsposter: sanguinews v#{@version} (ruby) - https://github.com/tdobrovolskij/sanguinews
-Date: #{date}
-
-#{headerline}
-#{message}
-#{trailer}
-END_OF_MESSAGE
-
-  return msgstr
 end
 
 # Method from y_enc gem
@@ -128,7 +94,13 @@ end
 def upload(message,length,pcrc32,chunk)
   response = ''
 # usenet works with ASCII
-  msg = create_message(message, chunk, @chunks, @crc32, pcrc32, length, @fsize, @basename)
+  subject="#{@prefix}#{@dirprefix}\"#{@basename}\" yEnc (#{chunk}/#{@chunks})"
+  msg = NntpMsg.new(@from,@groups,subject)
+  msg.poster = "sanguinews v#{@version} (ruby) - https://github.com/tdobrovolskij/sanguinews"
+  msg.message = message.force_encoding('ASCII-8BIT')
+  msg.yenc_body(chunk,@chunks,@crc32,pcrc32,length,@fsize,@basename)
+  size = msg.size
+  msg = msg.return_self
   begin
     Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
       response = nntp.post msg
@@ -150,47 +122,11 @@ def upload(message,length,pcrc32,chunk)
       msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
     end
     @lock.lock
-    @nzb.write_segment(msg.length,chunk,msgid)
+    @nzb.write_segment(size,chunk,msgid)
     @lock.unlock
   end
 end
 
-
-# Method processes the file and uploads result
-def process_and_upload(filepath,length,chunk)
-  yencmsg = ''
-  response = ''
-  yenced = yencode(filepath,length,chunk)
-  yencmsg = yenced[0]
-  pcrc32 = yenced[1]
-# usenet works with ASCII
-  yencmsg.force_encoding('ASCII-8BIT')
-  msg = create_message(yencmsg, chunk, @chunks, @crc32, pcrc32, length, @fsize, @basename)
-  begin
-    Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
-      response = nntp.post msg
-    end
-  rescue
-    puts $!, $@ if @verbose
-    puts "Upload of chunk " + chunk.to_s + " from file #{@basename} unsuccesful. Retrying..." if @verbose
-    sleep @delay
-    retry
-  end
-  if @verbose
-    puts "Uploaded chunk Nr:" + chunk.to_s
-  else
-    putc "."
-  end
-  if @nzb
-    msgid = ''
-    response.each do |r|
-      msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
-    end
-    @lock.lock
-    @nzb.write_segment(msg.length,chunk,msgid)
-    @lock.unlock
-  end
-end
 
 def process(file)
   puts "Uploading #{file}\n"
@@ -215,13 +151,14 @@ def process(file)
     if !@messages.empty?
       puts "Current thread count: " + Thread.list.count.to_s if @verbose
       if Thread.list.count <= @threads + 1 and !@messages.empty?
+	message = ''
 	@lock.lock
         message = @messages[0][0].force_encoding('ASCII-8BIT')
 	pcrc32 = @messages[0][1]
 	@messages.drop(1)
 	i += 1
 	@lock.unlock
-	if i <= @chunks
+	if i <= @chunks and !message.empty?
           arr[i] =  Thread.new(i){ |j|
 	    upload(message,@length,pcrc32,j)
 	    sleep 0.5
