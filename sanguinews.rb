@@ -162,7 +162,7 @@ def process(file)
           @lock.lock
           done += 1
           @lock.unlock
-          message[j] = {}
+          message[j] = []
         }
       else
         sleep 0.5
