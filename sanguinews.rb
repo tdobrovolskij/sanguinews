@@ -152,7 +152,7 @@ def process(file)
     if !@messages.empty?
       puts "Current thread count: " + Thread.list.count.to_s if @verbose
       if Thread.list.count <= @threads + 1 and !@messages.empty?
-	@lock.synchronize
+	@lock.synchronize do
 	  i += 1
 	  message[i] = @messages.shift
 	end
