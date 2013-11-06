@@ -44,6 +44,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.42 - Uploads shouldn't be corrupted anymore.
 * 0.41 - Excess parts aren't uploaded anymore.
 * 0.40 - Performance problems resolved.
 * 0.38 - Stable upload speed achieved.
