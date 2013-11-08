@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.42'
+@version = '0.43'
 
 require 'date'
 require 'tempfile'
@@ -48,9 +48,10 @@ def encode_in_memory(bindata)
   sio = StringIO.new("","w:ASCII-8BIT")
   bindata.force_encoding('ASCII-8BIT')
   i = 0
+  special = { 0 => nil, 10 => nil, 13 => nil, 61 => nil }
   bindata.each_byte do |b|
     char_to_write = (b + 42) % 256
-    if [0, 10, 13, 61].include?(char_to_write)
+    if special.has_key?(char_to_write)
       sio.putc '='
       char_to_write = (char_to_write + 64) % 256
     end

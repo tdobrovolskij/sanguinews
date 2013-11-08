@@ -44,6 +44,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.43 - Improved yEnc encoding algorithm.
 * 0.42 - Uploads shouldn't be corrupted anymore.
 * 0.41 - Excess parts aren't uploaded anymore.
 * 0.40 - Performance problems resolved.
