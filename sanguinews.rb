@@ -34,6 +34,7 @@ require 'tempfile'
 require 'rubygems'
 require 'optparse'
 require 'parseconfig'
+require 'monitor'
 # Needed for crc32 calculation
 require 'zlib'
 # Following non-standard gems are needed
@@ -76,8 +77,9 @@ def yencode(filepath,length)
         message[0] = encode_in_memory(bindata)
         message[1] = Zlib.crc32(bindata,0).to_s(16)
         message[2] = bindata.length
-      @lock.synchronize do
+      @messages.synchronize do
         @messages.push(message)
+	@cond.signal
       end
     end
   end
@@ -142,36 +144,31 @@ def process(file)
   puts subject
   @nzb.write_file_header(@from,subject,@groups) if @nzb
   @lock=Mutex.new
-  @messages = []
-  done = 0
+  @messages = Queue.new
+  @messages.extend(MonitorMixin)
+  @cond = @messages.new_cond
   message = []
   
-  arr[i] = Thread.new { yencode(file,@length) }
-  arr[i].priority += 1
-  while done < @chunks
-    if !@messages.empty?
-      puts "Current thread count: " + Thread.list.count.to_s if @verbose
-      if Thread.list.count <= @threads + 1 and !@messages.empty?
-	@lock.synchronize do
-	  i += 1
-	  message[i] = @messages.shift
-	end
-        arr[i] =  Thread.new(i){ |j|
-          upload(message[j][0],message[j][2],message[j][1],j)
-          sleep 0.5
-          @lock.lock
-          done += 1
-          @lock.unlock
-          message[j] = []
-        }
-      else
-        sleep 0.5
-      end
-    else
-      sleep 0.5
-    end
-  end
+  # let's give a little bit higher priority for file processing thread
+  t = Thread.new { yencode(file,@length) }
+  t.priority += 1
 
+  @threads.times do |x|
+    arr[x] = Thread.new {
+      while i < @chunks
+        @messages.synchronize do
+          puts "Current thread count: " + Thread.list.count.to_s if @verbose
+          @cond.wait_while { @messages.empty? and i < @chunks }
+	  Thread.current.exit if i == @chunks
+	  i += 1
+	  message[i] = @messages.pop
+        end
+	  upload(message[i][0],message[i][2],message[i][1],i)
+	  message[i] = []
+	  sleep 0.1
+      end
+    }
+  end
 
   # Wait for all threads to finish
   arr.each do |t|
