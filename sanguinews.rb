@@ -157,7 +157,7 @@ def process(file)
         @messages.synchronize do
           puts "Current thread count: " + Thread.list.count.to_s if @verbose
           @cond.wait_while { @messages.empty? and i < @chunks }
-	  Thread.current.exit if i == @chunks
+	  Thread.current.exit if i >= @chunks
 	  i += 1
 	  message[i] = @messages.pop
         end
