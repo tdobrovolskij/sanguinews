@@ -157,20 +157,32 @@ def process(file)
         @messages.synchronize do
           puts "Current thread count: " + Thread.list.count.to_s if @verbose
           @cond.wait_while { @messages.empty? and i < @chunks }
-	  Thread.current.exit if i >= @chunks
+#	  Thread.current.exit if i >= @chunks
 	  i += 1
 	  message[i] = @messages.pop
         end
-	  upload(message[i][0],message[i][2],message[i][1],i)
-	  message[i] = []
-	  sleep 0.1
+	upload(message[i][0],message[i][2],message[i][1],i)
+	message[i] = []
+	sleep 0.1
+        @messages.synchronize do
+	  if i == @chunks
+            @done = true
+	    @cond.signal
+          end
+	end
       end
     }
   end
 
   # Wait for all threads to finish
-  arr.each do |t|
-    t.join if ! t.nil?
+#  arr.each do |t|
+#    t.join if ! t.nil?
+#  end
+  @messages.synchronize do
+    @cond.wait_while { !@done }
+    arr.each do |t|
+      t.kill
+    end
   end
 
   puts
