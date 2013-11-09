@@ -46,38 +46,35 @@ load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
 
 def encode_in_memory(bindata)
   sio = StringIO.new("","w:ASCII-8BIT")
-  bindata.force_encoding('ASCII-8BIT')
-  i = 0
+  data = StringIO.open(bindata,"rb")
   special = { 0 => nil, 10 => nil, 13 => nil, 61 => nil }
-  bindata.each_byte do |b|
-    char_to_write = (b + 42) % 256
-    if special.has_key?(char_to_write)
-      sio.putc '='
-      char_to_write = (char_to_write + 64) % 256
+  until data.eof?
+    buffer = data.read(128)
+    buffer.each_byte do |b|
+      char_to_write = (b + 42) % 256
+      if special.has_key?(char_to_write)
+        sio.putc '='
+        char_to_write = (char_to_write + 64) % 256
+      end
+      sio.putc char_to_write
     end
-    sio.putc char_to_write
-    if i == 128
-      sio.puts "\n"
-      i = 0
-    else
-      i += 1
-    end
+    sio.puts "\n"
   end
   result = sio.string
   sio.close
+  data.close
   return result
 end
 
 # Method returns yenc encoded string and crc32 value
 def yencode(filepath,length)
-  #result = Array.new
   File.open(filepath,"rb") do |f|
     until f.eof?
       bindata = f.read(length)
-        message = []
-        message[0] = encode_in_memory(bindata)
-        message[1] = Zlib.crc32(bindata,0).to_s(16)
-        message[2] = bindata.length
+      message = []
+      message[0] = encode_in_memory(bindata)
+      message[1] = Zlib.crc32(bindata,0).to_s(16)
+      message[2] = bindata.length
       @messages.synchronize do
         @messages.push(message)
 	@cond.signal
