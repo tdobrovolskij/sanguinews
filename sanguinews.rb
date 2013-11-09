@@ -145,6 +145,10 @@ def process(file)
   @messages = Queue.new
   @messages.extend(MonitorMixin)
   @cond = @messages.new_cond
+  uploaded = []
+  uploaded[0] = 0
+  uploaded.extend(MonitorMixin)
+  done = uploaded.new_cond
   message = []
   
   # let's give a little bit higher priority for file processing thread
@@ -156,20 +160,18 @@ def process(file)
       while i < @chunks
         @messages.synchronize do
           puts "Current thread count: " + Thread.list.count.to_s if @verbose
-          @cond.wait_while { @messages.empty? and i < @chunks }
-#	  Thread.current.exit if i >= @chunks
+          @cond.wait_while { @messages.empty? }
 	  i += 1
+#	  Thread.current.exit if i > @chunks
 	  message[i] = @messages.pop
         end
 	upload(message[i][0],message[i][2],message[i][1],i)
 	message[i] = []
 	sleep 0.1
-        @messages.synchronize do
-	  if i == @chunks
-            @done = true
-	    @cond.signal
-          end
-	end
+	uploaded.synchronize do
+	  uploaded[0] += 1
+          done.signal
+        end
       end
     }
   end
@@ -178,8 +180,8 @@ def process(file)
 #  arr.each do |t|
 #    t.join if ! t.nil?
 #  end
-  @messages.synchronize do
-    @cond.wait_while { !@done }
+  uploaded.synchronize do
+    done.wait_while { uploaded[0] < @chunks }
     arr.each do |t|
       t.kill
     end
