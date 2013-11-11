@@ -35,12 +35,11 @@ require 'rubygems'
 require 'optparse'
 require 'parseconfig'
 require 'monitor'
-# Needed for crc32 calculation
-require 'zlib'
 # Following non-standard gems are needed
 require 'nzb'
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
+load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
 #load "#{File.dirname(__FILE__)}/lib/y_enc.rb"
 #require 'y_enc'
 
@@ -67,10 +66,10 @@ def encode_in_memory(bindata)
 end
 
 # Method returns yenc encoded string and crc32 value
-def yencode(filepath,length)
-  File.open(filepath,"rb") do |f|
-    until f.eof?
-      bindata = f.read(length)
+def yencode(file,length)
+#  File.open(filepath,"rb") 
+   until file.eof?
+      bindata = file.read(length)
       message = []
       message[0] = encode_in_memory(bindata)
       message[1] = Zlib.crc32(bindata,0).to_s(16)
@@ -79,26 +78,22 @@ def yencode(filepath,length)
         @messages.push(message)
 	@cond.signal
       end
-    end
-  end
+   end
+ # end
 end
 
-# Method from y_enc gem
-# Big thanks to Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend)
-def file_crc32 filepath
-  f = nil
-  File.open( filepath, "rb") { |h| f = h.read }
-  Zlib.crc32(f,0).to_s(16)
-end
-
-def upload(message,length,pcrc32,chunk)
+def upload(message,length,pcrc32,chunk,file)
   response = ''
+  crc32 = file.crc32
+  fsize = file.size
+  chunks = file.chunks
+  basename = file.name
 # usenet works with ASCII
-  subject="#{@prefix}#{@dirprefix}\"#{@basename}\" yEnc (#{chunk}/#{@chunks})"
+  subject="#{@prefix}#{@dirprefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
   msg = NntpMsg.new(@from,@groups,subject)
   msg.poster = "sanguinews v#{@version} (ruby) - https://github.com/tdobrovolskij/sanguinews"
   msg.message = message.force_encoding('ASCII-8BIT')
-  msg.yenc_body(chunk,@chunks,@crc32,pcrc32,length,@fsize,@basename)
+  msg.yenc_body(chunk,chunks,crc32,pcrc32,length,fsize,basename)
   size = msg.size
   msg = msg.return_self
   begin
@@ -107,7 +102,7 @@ def upload(message,length,pcrc32,chunk)
     end
   rescue
     puts $!, $@ if @verbose
-    puts "Upload of chunk " + chunk.to_s + " from file #{@basename} unsuccesful. Retrying..." if @verbose
+    puts "Upload of chunk " + chunk.to_s + " from file #{basename} unsuccesful. Retrying..." if @verbose
     sleep @delay
     retry
   end
@@ -130,15 +125,15 @@ end
 
 def process(file)
   puts "Uploading #{file}\n"
-  @fsize = File.size?(file)
-  @chunks = @fsize.to_f / @length
-  @chunks = @chunks.ceil
-  puts "Chunks: " + @chunks.to_s if @verbose
-  @crc32 = file_crc32(file)
-  @basename = File.basename(file)
+  file = FileToUpload.new(file)
+  fsize = file.size
+  crc32 = file.file_crc32
+  chunks = file.chunks?(@length)
+  puts "Chunks: " + chunks.to_s if @verbose
+  basename = file.name
   i = 0
   arr = []
-  subject = "#{@prefix}#{@dirprefix}#{@basename} yEnc (1/#{@chunks})"
+  subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
   puts subject
   @nzb.write_file_header(@from,subject,@groups) if @nzb
   @lock=Mutex.new
@@ -157,15 +152,15 @@ def process(file)
 
   @threads.times do |x|
     arr[x] = Thread.new {
-      while i < @chunks
+      while i < chunks
         @messages.synchronize do
           puts "Current thread count: " + Thread.list.count.to_s if @verbose
           @cond.wait_while { @messages.empty? }
 	  i += 1
-#	  Thread.current.exit if i > @chunks
 	  message[i] = @messages.pop
         end
-	upload(message[i][0],message[i][2],message[i][1],i)
+	upload(message[i][0],message[i][2],message[i][1],i,file)
+#	upload(message[i][0],message[i][2],message[i][1],i,basename,fsize,crc32,chunks)
 	message[i] = []
 	sleep 0.1
 	uploaded.synchronize do
@@ -181,13 +176,14 @@ def process(file)
 #    t.join if ! t.nil?
 #  end
   uploaded.synchronize do
-    done.wait_while { uploaded[0] < @chunks }
+    done.wait_while { uploaded[0] < chunks }
     arr.each do |t|
       t.kill
     end
   end
 
   puts
+  file.close
   @nzb.write_file_footer if @nzb
 end
 
