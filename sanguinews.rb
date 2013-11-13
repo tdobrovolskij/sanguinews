@@ -27,7 +27,7 @@ rescue Gem::LoadError
   # not installed
 end
 
-@version = '0.43'
+@version = '0.44'
 
 require 'date'
 require 'tempfile'
@@ -37,6 +37,8 @@ require 'parseconfig'
 require 'monitor'
 # Following non-standard gems are needed
 require 'nzb'
+require 'parallel'
+load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
 load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
@@ -68,21 +70,26 @@ end
 # Method returns yenc encoded string and crc32 value
 def yencode(file,length)
 #  File.open(filepath,"rb") 
+   i = 1
    until file.eof?
       bindata = file.read(length)
-      message = []
-      message[0] = encode_in_memory(bindata)
-      message[1] = Zlib.crc32(bindata,0).to_s(16)
-      message[2] = bindata.length
-      @messages.synchronize do
-        @messages.push(message)
-	@cond.signal
-      end
+      message = {}
+      message[:yenc] = encode_in_memory(bindata)
+      message[:crc32] = Zlib.crc32(bindata,0).to_s(16)
+      message[:length] = bindata.length
+      message[:chunk] = i
+      message[:file] = file
+      @messages.push(message)
+      i += 1
    end
- # end
 end
 
-def upload(message,length,pcrc32,chunk,file)
+def upload(data)
+  message = data[:yenc]
+  length = data[:length]
+  pcrc32 = data[:crc32]
+  file = data[:file]
+  chunk = data[:chunk]
   response = ''
   crc32 = file.crc32
   fsize = file.size
@@ -120,71 +127,6 @@ def upload(message,length,pcrc32,chunk,file)
     @nzb.write_segment(size,chunk,msgid)
     @lock.unlock
   end
-end
-
-
-def process(file)
-  puts "Uploading #{file}\n"
-  file = FileToUpload.new(file)
-  fsize = file.size
-  crc32 = file.file_crc32
-  chunks = file.chunks?(@length)
-  puts "Chunks: " + chunks.to_s if @verbose
-  basename = file.name
-  i = 0
-  arr = []
-  subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
-  puts subject
-  @nzb.write_file_header(@from,subject,@groups) if @nzb
-  @lock=Mutex.new
-  @messages = Queue.new
-  @messages.extend(MonitorMixin)
-  @cond = @messages.new_cond
-  uploaded = []
-  uploaded[0] = 0
-  uploaded.extend(MonitorMixin)
-  done = uploaded.new_cond
-  message = []
-  
-  # let's give a little bit higher priority for file processing thread
-  t = Thread.new { yencode(file,@length) }
-  t.priority += 1
-
-  @threads.times do |x|
-    arr[x] = Thread.new {
-      while i < chunks
-        @messages.synchronize do
-          puts "Current thread count: " + Thread.list.count.to_s if @verbose
-          @cond.wait_while { @messages.empty? }
-	  i += 1
-	  message[i] = @messages.pop
-        end
-	upload(message[i][0],message[i][2],message[i][1],i,file)
-#	upload(message[i][0],message[i][2],message[i][1],i,basename,fsize,crc32,chunks)
-	message[i] = []
-	sleep 0.1
-	uploaded.synchronize do
-	  uploaded[0] += 1
-          done.signal
-        end
-      end
-    }
-  end
-
-  # Wait for all threads to finish
-#  arr.each do |t|
-#    t.join if ! t.nil?
-#  end
-  uploaded.synchronize do
-    done.wait_while { uploaded[0] < chunks }
-    arr.each do |t|
-      t.kill
-    end
-  end
-
-  puts
-  file.close
-  @nzb.write_file_footer if @nzb
 end
 
 def parse_config(config)
@@ -304,7 +246,7 @@ end
 
 # "max" is needed only in dirmode
 max = files.length
-i = 1
+c = 1
 # for dirmode nzb file's header should be written before we start processing
 if dirmode
   dirname = File.basename(directory)
@@ -313,6 +255,10 @@ if dirmode
     @nzb.write_header
   end
 end
+
+p = Pool.new(@threads)
+@unprocessed = 0
+
 files.each do |file|
   next if !File.file?(file)
   if filemode
@@ -323,10 +269,52 @@ files.each do |file|
     end
   end
 
-  @dirprefix = dirname + " [#{i}/#{max}] - " if dirmode
-  process(file)
+  @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
+
+  puts "Uploading #{file}\n"
+  file = FileToUpload.new(file)
+  fsize = file.size
+  crc32 = file.file_crc32
+  chunks = file.chunks?(@length)
+  puts "Chunks: " + chunks.to_s if @verbose
+  basename = file.name
+  subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
+  puts subject
+  # running this part only once
+  if c == 1
+    @lock=Mutex.new
+    @messages = Queue.new
+    @messages.extend(MonitorMixin)
+    @cond = @messages.new_cond
+  end
+
+  @unprocessed += chunks
+
+  # let's give a little bit higher priority for file processing thread
+  @t = Thread.new { yencode(file,@length) }
+  @t.priority += 1
+
+#    @nzb.write_file_header(@from,subject,@groups) if @nzb
+    while @unprocessed > 0
+      p.schedule do
+	data = {}
+        puts "Current thread count: " + Thread.list.count.to_s if @verbose
+        data = @messages.pop
+	upload(data)
+      end
+      @unprocessed -= 1
+    end
+  
+    @nzb.write_file_footer if @nzb
+
+  if !@t.nil?
+    @t.join
+  end
+  
   @nzb.write_footer if @nzb and filemode
-  i += 1
+  c += 1
 end
+
+p.shutdown 
 
 @nzb.write_footer if @nzb and dirmode
