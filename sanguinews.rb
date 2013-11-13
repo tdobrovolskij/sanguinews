@@ -87,7 +87,7 @@ def upload(data,nzb_file)
 # usenet works with ASCII
   subject="#{@prefix}#{@dirprefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
   msg = NntpMsg.new(@from,@groups,subject)
-  msg.poster = "sanguinews v#{@version} (ruby) - https://github.com/tdobrovolskij/sanguinews"
+  msg.poster = "sanguinews v#{@version} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
   msg.message = message.force_encoding('ASCII-8BIT')
   msg.yenc_body(chunk,chunks,crc32,pcrc32,length,fsize,basename)
   size = msg.size
@@ -298,18 +298,17 @@ files.each do |file|
     unprocessed -= 1
   end
 
-#  nzb.write_file_footer if @nzb
-
   if !@t.nil?
     @t.join
   end
   
-#  @nzb.write_footer if @nzb and filemode
   nzbs << nzb
   c += 1
 end
 
 p.shutdown 
+
+puts
 
 if @nzb
   nzbs.each do |n|
