@@ -41,9 +41,11 @@ CREDITS
 =======
 * nntp library(crudely modified by me) from http://nntp.rubyforge.org/ project.
 * yenc decoder gem by Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend/yenc)
+* thread-pool library from https://gist.github.com/Burgestrand/2040175
 
 HISTORY
 =======
+* 0.44 - Lots of improvements in upload scheduler.
 * 0.43 - Improved yEnc encoding algorithm.
 * 0.42 - Uploads shouldn't be corrupted anymore.
 * 0.41 - Excess parts aren't uploaded anymore.
