@@ -1,0 +1,12 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    nzb (0.2.1)
+    parseconfig (1.0.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  nzb (>= 0.2.1)
+  parseconfig

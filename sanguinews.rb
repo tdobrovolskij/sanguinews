@@ -16,34 +16,24 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
-# We will be using nntp and yEnc gems
-
-# TODO: implement normal check for installed gems
-begin
-  gem "yEnc", ">=0.0.30"
-  gem "nntp"
-  gem "parseconfig"
-rescue Gem::LoadError
-  # not installed
-end
 
 @version = '0.44'
 
+require 'rubygems'
+require 'bundler/setup'
+require 'optparse'
+require 'monitor'
 require 'date'
 require 'tempfile'
-require 'rubygems'
-require 'optparse'
-require 'parseconfig'
-require 'monitor'
 # Following non-standard gems are needed
 require 'nzb'
+require 'parseconfig'
 #require 'parallel'
 load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
 load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
 #load "#{File.dirname(__FILE__)}/lib/y_enc.rb"
-#require 'y_enc'
 
 def encode_in_memory(bindata)
   sio = StringIO.new("","w:ASCII-8BIT")
