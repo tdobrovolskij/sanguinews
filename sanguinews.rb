@@ -37,7 +37,7 @@ require 'parseconfig'
 require 'monitor'
 # Following non-standard gems are needed
 require 'nzb'
-require 'parallel'
+#require 'parallel'
 load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
@@ -69,22 +69,21 @@ end
 
 # Method returns yenc encoded string and crc32 value
 def yencode(file,length)
-#  File.open(filepath,"rb") 
    i = 1
    until file.eof?
       bindata = file.read(length)
-      message = {}
-      message[:yenc] = encode_in_memory(bindata)
-      message[:crc32] = Zlib.crc32(bindata,0).to_s(16)
-      message[:length] = bindata.length
-      message[:chunk] = i
-      message[:file] = file
-      @messages.push(message)
+      data = {}
+      data[:yenc] = encode_in_memory(bindata)
+      data[:crc32] = Zlib.crc32(bindata,0).to_s(16)
+      data[:length] = bindata.length
+      data[:chunk] = i
+      data[:file] = file
+      @messages.push(data)
       i += 1
    end
 end
 
-def upload(data)
+def upload(data,nzb_file)
   message = data[:yenc]
   length = data[:length]
   pcrc32 = data[:crc32]
@@ -124,7 +123,7 @@ def upload(data)
       msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
     end
     @lock.lock
-    @nzb.write_segment(size,chunk,msgid)
+    nzb_file.write_segment(size,chunk,msgid)
     @lock.unlock
   end
 end
@@ -257,7 +256,10 @@ if dirmode
 end
 
 p = Pool.new(@threads)
-@unprocessed = 0
+unprocessed = 0
+@lock=Mutex.new
+@messages = Queue.new
+nzbs = []
 
 files.each do |file|
   next if !File.file?(file)
@@ -280,41 +282,59 @@ files.each do |file|
   basename = file.name
   subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
   puts subject
-  # running this part only once
-  if c == 1
-    @lock=Mutex.new
-    @messages = Queue.new
-    @messages.extend(MonitorMixin)
-    @cond = @messages.new_cond
-  end
 
-  @unprocessed += chunks
+  unprocessed += chunks
 
   # let's give a little bit higher priority for file processing thread
   @t = Thread.new { yencode(file,@length) }
   @t.priority += 1
 
-#    @nzb.write_file_header(@from,subject,@groups) if @nzb
-    while @unprocessed > 0
-      p.schedule do
-	data = {}
-        puts "Current thread count: " + Thread.list.count.to_s if @verbose
-        data = @messages.pop
-	upload(data)
-      end
-      @unprocessed -= 1
+  if @nzb
+    if filemode
+      nzb = @nzb
+    else
+      nzb = Nzb.new(basename,"tmp_")
     end
-  
-    @nzb.write_file_footer if @nzb
+    nzb.write_file_header(@from,subject,@groups)
+  end
+
+  while unprocessed > 0
+    p.schedule do
+      data = {}
+      puts "Current thread count: " + Thread.list.count.to_s if @verbose
+      data = @messages.pop
+      upload(data,nzb)
+    end
+    unprocessed -= 1
+  end
+
+#  nzb.write_file_footer if @nzb
 
   if !@t.nil?
     @t.join
   end
   
-  @nzb.write_footer if @nzb and filemode
+#  @nzb.write_footer if @nzb and filemode
+  nzbs << nzb
   c += 1
 end
 
 p.shutdown 
 
-@nzb.write_footer if @nzb and dirmode
+if @nzb
+  nzbs.each do |n|
+    n.write_file_footer
+    if filemode
+      n.write_footer
+    else
+      nzb_name = File.open(n.nzb_filename,"r")
+      nzb = nzb_name.read
+      orig_nzb = File.open(@nzb.nzb_filename,"a")
+      orig_nzb.puts nzb
+      orig_nzb.close
+      nzb_name.close
+      File.delete(nzb_name)
+    end
+  end
+  @nzb.write_footer if @nzb and dirmode
+end
