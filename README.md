@@ -9,11 +9,13 @@ Use git clone to get the newest version:
 
     git clone https://github.com/tdobrovolskij/sanguinews.git
 
-Some gems are required:
+Some gems are required. Use bundler to resolve dependencies swiftly:
 ```
-gem install nzb
-gem install parseconfig
+gem install bundler
+bundle install
 ```
+"bundle install" will check if all dependencies are satisfied and install all the needed gems.
+
 Update process is pretty much straightforward:
 
     cd sanguinews && git pull
