@@ -88,6 +88,7 @@ def upload(data,nzb_file)
   subject="#{@prefix}#{@dirprefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
   msg = NntpMsg.new(@from,@groups,subject)
   msg.poster = "sanguinews v#{@version} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
+  msg.xna = @xna
   msg.message = message.force_encoding('ASCII-8BIT')
   msg.yenc_body(chunk,chunks,crc32,pcrc32,length,fsize,basename)
   size = msg.size
@@ -137,6 +138,12 @@ def parse_config(config)
     @mode = :tls
   else
     @mode = :original
+  end
+  xna = config['xna']
+  if xna == 'yes'
+    @xna = true
+  else
+    @xna = false
   end
   @nzb = false
   @nzb = true if config['nzb'] == 'yes'

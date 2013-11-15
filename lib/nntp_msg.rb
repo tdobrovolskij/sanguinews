@@ -19,7 +19,7 @@
 require 'date'
 
 class NntpMsg
-  attr_accessor :message, :from, :groups, :subject, :poster, :date
+  attr_accessor :message, :from, :groups, :subject, :poster, :date, :xna
 
   def initialize(from,groups,subject,message='',date=nil,poster=nil)
     @from = from
@@ -40,6 +40,7 @@ class NntpMsg
     sio.puts "Newsgroups: #{@groups}"
     sio.puts "Subject: #{@subject}"
     sio.puts "X-Newsposter: #{@poster}" if !poster.nil?
+    sio.puts "X-No-Archive: yes" if @xna
     sio.puts "Date: #{@date}"
     sio.puts
     header = sio.string
