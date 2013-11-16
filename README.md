@@ -1,7 +1,7 @@
 sanguinews
 ==========
 
-Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler(https://github.com/madcowfred/newsmangler). Sanguinews is written entirely in ruby. Supports multithreading and SSL.
+Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler(https://github.com/madcowfred/newsmangler). Sanguinews is written almost entirely in ruby(almost, because in version 0.45 I have switched from pure ruby yEnc class to inline C code). Supports multithreading and SSL.
 
 INSTALLATION
 ============
@@ -42,11 +42,12 @@ View help:
 CREDITS
 =======
 * nntp library(crudely modified by me) from http://nntp.rubyforge.org/ project.
-* yenc decoder gem by Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend/yenc)
+* crc32 method from yenc gem by Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend/yenc)
 * thread-pool library from https://gist.github.com/Burgestrand/2040175
 
 HISTORY
 =======
+* 0.45 - 3500% performance gain in yencoding.
 * 0.44 - Lots of improvements in upload scheduler.
 * 0.43 - Improved yEnc encoding algorithm.
 * 0.42 - Uploads shouldn't be corrupted anymore.
