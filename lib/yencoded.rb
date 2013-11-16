@@ -45,6 +45,7 @@ class Yencoded
           case 10:
           case 13:
           case '=':
+	  case '.':
                   destlen++; i++;           //we need more memory than expected
                   start = realloc(start,destlen * sizeof(char));
                   output = &start[pointer]; //in case realloc was in different memspace

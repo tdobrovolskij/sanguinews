@@ -39,6 +39,12 @@ def yencode(file,length)
    i = 1
    until file.eof?
       bindata = file.read(length)
+      # We can't take all memory, so we wait
+      @messages.synchronize do
+	@cond.wait_while do
+	  @messages.length > @threads * 2
+	end
+      end
       data = {}
       len = bindata.length
       data[:yenc] = Yencoded.new.yenc(bindata,len)
@@ -234,6 +240,8 @@ p = Pool.new(@threads)
 unprocessed = 0
 @lock=Mutex.new
 @messages = Queue.new
+@messages.extend(MonitorMixin)
+@cond = @messages.new_cond
 nzbs = []
 
 files.each do |file|
@@ -279,6 +287,9 @@ files.each do |file|
       puts "Current thread count: " + Thread.list.count.to_s if @verbose
       data = @messages.pop
       upload(data,nzb)
+      @messages.synchronize do
+	@cond.signal
+      end
     end
     unprocessed -= 1
   end
