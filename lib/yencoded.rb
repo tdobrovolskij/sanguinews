@@ -22,49 +22,45 @@ class Yencoded
   inline do |builder|
     builder.c "
     char *yenc(char *bindata,long datalen) {
-      int i=0;
+     int i=0;
       int linelen=128;
       long restlen;
       long destlen;
-      long pointer;
       unsigned char c;
       unsigned char *output;
       unsigned char *start;
+      char *result;
 
       restlen = datalen;                    //restlen is our byte processing counter
       destlen = restlen;                    //will be needing this for memory allocation
-      pointer = 0;
-      output = malloc(destlen * sizeof(char));
+      output = (unsigned char*)malloc(2 * destlen * sizeof(char));
       start = output;
       while (restlen>0) {
-        c=*bindata;                         //get byte
-        c=(unsigned char) (c+42);           //add 42 as per yenc specs
+        c=(unsigned char) *bindata;                         //get byte
+        c=c+42;           //add 42 as per yenc specs
         bindata++; restlen--;
         switch(c) {                         //special characters
           case 0:
           case 10:
           case 13:
-          case '=':
-	  case '.':
-                  destlen++; i++;           //we need more memory than expected
-                  start = realloc(start,destlen * sizeof(char));
-                  output = &start[pointer]; //in case realloc was in different memspace
-                  *output='='; output++;    //add escape char to output
-                  c = (unsigned char) (c+64);
-                  pointer++;
+          case 61:
+                  destlen++;               //we need more memory than expected
+                  *output=61; output++;    //add escape char to output
+                  c = c+64;
         }
         *output=c; output++; i++;
-        pointer++;
         if ((i>=linelen)|(restlen==0)){
           destlen++;
-          start = realloc(start,destlen * sizeof(char));
-          output = &start[pointer];         //in case realloc was in different memspace
           *output=10; output++;
-          pointer++; 
           i=0;
         }
       }
-      return start;
+      *output=0;
+      destlen++;
+      result=malloc(destlen*sizeof(char));
+      result=memcpy(result,start,destlen);
+      free(start);
+      return result; 
     }"
   end
 end
