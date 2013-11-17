@@ -34,7 +34,7 @@ class Yencoded
       restlen = datalen;                    //restlen is our byte processing counter
       destlen = restlen;                    //will be needing this for memory allocation
       output = (unsigned char*)malloc(2 * destlen * sizeof(char));
-      start = output;
+      start = output;			    //starting address will be stored here
       while (restlen>0) {
         c=(unsigned char) *bindata;                         //get byte
         c=c+42;           //add 42 as per yenc specs
@@ -44,18 +44,35 @@ class Yencoded
           case 10:
           case 13:
           case 61:
-                  destlen++;               //we need more memory than expected
+                  destlen++; i++;          //we need more memory than expected
                   *output=61; output++;    //add escape char to output
                   c = c+64;
+		  break;
+          case 9:			   //escape tab and space if the are first or last on the line
+          case 32:
+                  if ((i==0)||(i==linelen-1)) {
+                    destlen++; i++;        //we need more memory than expected
+                    *output=61; output++;  //add escape char to output
+                    c = c+64;
+                  }
+		  break;
+          case 46:			   //escape dot if it's in a first column
+                  if (i==0) {
+                    destlen++; i++;        //we need more memory than expected
+                    *output=61; output++;  //add escape char to output
+                    c = c+64;
+                  }
+		  break;
         }
-        *output=c; output++; i++;
-        if ((i>=linelen)|(restlen==0)){
-          destlen++;
+	*output=c; output++; i++;
+        if ((i>=linelen)||(restlen==0)){
+          destlen++; destlen++;
+	  *output=13; output++;		   //according to yenc specs we must use windows style line breaks
           *output=10; output++;
           i=0;
         }
       }
-      *output=0;
+      *output=0;			   //NULL termination is required
       destlen++;
       result=malloc(destlen*sizeof(char));
       result=memcpy(result,start,destlen);
