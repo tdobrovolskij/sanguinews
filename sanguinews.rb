@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.45.2'
+@version = '0.46'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -28,6 +28,7 @@ require 'tempfile'
 # Following non-standard gems are needed
 require 'nzb'
 require 'parseconfig'
+require 'speedometer'
 load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
@@ -77,21 +78,21 @@ def upload(data,nzb_file)
   msg.yenc_body(chunk,chunks,crc32,pcrc32,length,fsize,basename)
   size = msg.size
   msg = msg.return_self
+  mfsize = msg.length
   begin
     Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
       response = nntp.post msg
     end
   rescue
-    puts $!, $@ if @verbose
-    puts "Upload of chunk " + chunk.to_s + " from file #{basename} unsuccesful. Retrying..." if @verbose
+    #puts $!, $@ if @verbose
+    @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
     sleep @delay
     retry
   end
   if @verbose
-    puts "Uploaded chunk Nr:" + chunk.to_s
-  else
-    putc "."
+    @s.log("Uploaded chunk Nr:#{chunk}")
   end
+  @s.uploaded = @s.uploaded + mfsize
   if @nzb
     msgid = ''
     response.each do |r|
@@ -243,6 +244,13 @@ unprocessed = 0
 @messages.extend(MonitorMixin)
 @cond = @messages.new_cond
 nzbs = []
+@s = Speedometer.new("KB")
+@s.uploaded = 0
+Thread.new {
+  while @s.active
+    @s.display
+  end
+}
 
 files.each do |file|
   next if !File.file?(file)
@@ -256,15 +264,17 @@ files.each do |file|
 
   @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
 
-  puts "Uploading #{file}\n"
+  #puts "Uploading #{file}\n"
+  @s.log("Uploading #{file}\n")
   file = FileToUpload.new(file)
   fsize = file.size
   crc32 = file.file_crc32
   chunks = file.chunks?(@length)
-  puts "Chunks: " + chunks.to_s if @verbose
+  @s.log("Chunks: #{chunks}") if @verbose
   basename = file.name
   subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
-  puts subject
+#  puts subject
+  @s.log(subject)
 
   unprocessed += chunks
 
@@ -284,7 +294,7 @@ files.each do |file|
   while unprocessed > 0
     p.schedule do
       data = {}
-      puts "Current thread count: " + Thread.list.count.to_s if @verbose
+      #puts "Current thread count: " + Thread.list.count.to_s if @verbose
       data = @messages.pop
       upload(data,nzb)
       @messages.synchronize do
@@ -293,7 +303,7 @@ files.each do |file|
     end
     unprocessed -= 1
   end
-
+  
   if !@t.nil?
     @t.join
   end
@@ -303,7 +313,7 @@ files.each do |file|
 end
 
 p.shutdown 
-
+@s.active = false
 puts
 
 if @nzb

@@ -47,6 +47,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.46 - Upload speed is now displayed.
 * 0.45 - 3500% performance gain in yencoding.
 * 0.44 - Lots of improvements in upload scheduler.
 * 0.43 - Improved yEnc encoding algorithm.
