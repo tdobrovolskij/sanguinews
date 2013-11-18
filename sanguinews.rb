@@ -99,7 +99,7 @@ def upload(data,nzb_file)
       msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
     end
     @lock.lock
-    nzb_file.write_segment(size,chunk,msgid)
+    nzb_file.write_segment(length,chunk,msgid)
     @lock.unlock
   end
 end
