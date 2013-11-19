@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.46.1'
+@version = '0.47'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -29,14 +29,14 @@ require 'tempfile'
 require 'nzb'
 require 'parseconfig'
 require 'speedometer'
-load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
+#load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
 load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
 load "#{File.dirname(__FILE__)}/lib/yencoded.rb"
 
 # Method returns yenc encoded string and crc32 value
-def yencode(file,length)
+def yencode(file,length,nzb)
    i = 1
    until file.eof?
       bindata = file.read(length)
@@ -47,14 +47,16 @@ def yencode(file,length)
 	end
       end
       data = {}
+      final_data = []
       len = bindata.length
       data[:yenc] = Yencoded.new.yenc(bindata,len)
       data[:crc32] = Zlib.crc32(bindata,0).to_s(16)
       data[:length] = len
       data[:chunk] = i
       data[:file] = file
-      #final_data = form_message(data)
-      @messages.push(data)
+      final_data[0] = form_message(data)
+      final_data[1] = nzb
+      @messages.push(final_data)
       i += 1
    end
 end
@@ -83,38 +85,6 @@ def form_message(data)
   result[:chunk] = chunk
   result[:length] = length
   return result
-end
-
-def upload(data,nzb_file)
-    msg = data[:message] #.force_encoding('ASCII-8BIT')
-    chunk = data[:chunk]
-    basename = data[:filename]
-    length = data[:length]
-    full_size = msg.length
-    response = ''
-    begin
-    Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
-      response = nntp.post msg
-    end
-  rescue
-    #puts $!, $@ if @verbose
-    @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
-    sleep @delay
-    retry
-  end
-  if @verbose
-    @s.log("Uploaded chunk Nr:#{chunk}")
-  end
-  @s.uploaded = @s.uploaded + full_size
-  if @nzb
-    msgid = ''
-    response.each do |r|
-      msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
-    end
-    @lock.lock
-    nzb_file.write_segment(length,chunk,msgid)
-    @lock.unlock
-  end
 end
 
 def parse_config(config)
@@ -250,7 +220,6 @@ if dirmode
   end
 end
 
-p = Pool.new(@threads)
 unprocessed = 0
 @lock=Mutex.new
 @messages = Queue.new
@@ -266,16 +235,32 @@ Thread.new {
     @s.display
   end
 }
+uploading = false
 
 pool = []
 @threads.times do |x|
   pool[x] = Thread.new {
-    uploading = true
-    nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
 
+    @messages.synchronize do
+      @cond.wait_while do
+	uploading == false
+      end
+    end
+
+    begin
+      nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
+    rescue
+      #puts $!, $@ if @verbose
+      @s.log("Connection nr. #{x} has failed. Reconnecting...") if @verbose
+      sleep @delay
+      retry
+    end
     
-    while !@to_post.empty?
-      stuff = @to_post.pop
+    until @messages.empty?
+      stuff = @messages.pop
+      @messages.synchronize do
+        @cond.signal
+      end
 
       data = stuff[0]
       nzb_file = stuff[1]
@@ -289,7 +274,7 @@ pool = []
       begin
 	response = nntp.post msg
       rescue
-	puts $!, $@ if @verbose
+	#puts $!, $@ if @verbose
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
         sleep @delay
 	retry
@@ -305,9 +290,10 @@ pool = []
         response.each do |r|
           msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
         end
-        @lock.lock
-        nzb_file.write_segment(length,chunk,msgid)
-        @lock.unlock
+        @lock.synchronize do
+	  nzb_file.write_segment(length,chunk,msgid)
+	  unprocessed -= 1
+	end
       end
 
     end
@@ -327,7 +313,6 @@ files.each do |file|
 
   @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
 
-  #puts "Uploading #{file}\n"
   @s.log("Uploading #{file}\n")
   file = FileToUpload.new(file)
   fsize = file.size
@@ -336,10 +321,11 @@ files.each do |file|
   @s.log("Chunks: #{chunks}") if @verbose
   basename = file.name
   subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
-#  puts subject
   @s.log(subject)
 
-  unprocessed += chunks
+  @lock.synchronize do
+    unprocessed += chunks
+  end
 
 
   if @nzb
@@ -352,58 +338,23 @@ files.each do |file|
   end
 
   # let's give a little bit higher priority for file processing thread
-  @t = Thread.new { yencode(file,@length) }
-  @t.priority += 1
+  @t = Thread.new { yencode(file,@length,nzb) }
+  @t.priority += 2
 
-  @c = Thread.new {
-    while unprocessed > 0
-#    p.schedule do
-      data = {}
-      to_upload = []
-      #puts "Current thread count: " + Thread.list.count.to_s if @verbose
-      data = @messages.pop
-      to_upload[0] = form_message(data)
-      to_upload[1] = nzb
-      @to_post.push(to_upload)
-      #upload(data,nzb)
-      @messages.synchronize do
-        @cond.signal
-      end
-#    end
-    unprocessed -= 1
-  end
-  }
-#  while unprocessed > 0
-#    p.schedule do
-#      data = {}
-#      to_upload = []
-      #puts "Current thread count: " + Thread.list.count.to_s if @verbose
-#      data = @messages.pop
-#      to_upload[0] = form_message(data)
-#      to_upload[1] = nzb
-#      @to_post.push(to_upload)
-      #upload(data,nzb)
-#      @messages.synchronize do
-#	@cond.signal
-#      end
-#    end
-#    unprocessed -= 1
-#  end
+   @messages.synchronize do
+     uploading = true
+     @cond.signal
+   end
   
   if !@t.nil?
     @t.join
-  end
-  if @c.nil?
-    @c.join
   end
   
   nzbs << nzb
   c += 1
 end
 
-#p.shutdown
 pool.each do |x|
-  x["uploading"] = false
   x.join
 end
 @s.active = false

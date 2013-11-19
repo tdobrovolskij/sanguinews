@@ -47,6 +47,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.47 - Reusing old connections instead of opening new ones.
 * 0.46 - Upload speed is now displayed.
 * 0.45 - 3500% performance gain in yencoding.
 * 0.44 - Lots of improvements in upload scheduler.
