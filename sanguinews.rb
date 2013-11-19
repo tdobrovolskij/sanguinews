@@ -53,6 +53,7 @@ def yencode(file,length)
       data[:length] = len
       data[:chunk] = i
       data[:file] = file
+      #final_data = form_message(data)
       @messages.push(data)
       i += 1
    end
@@ -255,6 +256,8 @@ unprocessed = 0
 @messages = Queue.new
 @messages.extend(MonitorMixin)
 @cond = @messages.new_cond
+@to_post = Queue.new
+@to_post.extend(MonitorMixin)
 nzbs = []
 @s = Speedometer.new("KB")
 @s.uploaded = 0
@@ -263,6 +266,54 @@ Thread.new {
     @s.display
   end
 }
+
+pool = []
+@threads.times do |x|
+  pool[x] = Thread.new {
+    uploading = true
+    nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
+
+    
+    while !@to_post.empty?
+      stuff = @to_post.pop
+
+      data = stuff[0]
+      nzb_file = stuff[1]
+      msg = data[:message] #.force_encoding('ASCII-8BIT')
+      chunk = data[:chunk]
+      basename = data[:filename]
+      length = data[:length]
+      full_size = msg.length
+      response = ''
+
+      begin
+	response = nntp.post msg
+      rescue
+	puts $!, $@ if @verbose
+        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
+        sleep @delay
+	retry
+      end
+
+      if @verbose
+        @s.log("Uploaded chunk Nr:#{chunk}")
+      end
+
+      @s.uploaded = @s.uploaded + full_size
+      if @nzb
+        msgid = ''
+        response.each do |r|
+          msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
+        end
+        @lock.lock
+        nzb_file.write_segment(length,chunk,msgid)
+        @lock.unlock
+      end
+
+    end
+    nntp.finish
+  }
+end
 
 files.each do |file|
   next if !File.file?(file)
@@ -290,9 +341,6 @@ files.each do |file|
 
   unprocessed += chunks
 
-  # let's give a little bit higher priority for file processing thread
-  @t = Thread.new { yencode(file,@length) }
-  @t.priority += 1
 
   if @nzb
     if filemode
@@ -303,29 +351,61 @@ files.each do |file|
     nzb.write_file_header(@from,subject,@groups)
   end
 
-  while unprocessed > 0
-    p.schedule do
+  # let's give a little bit higher priority for file processing thread
+  @t = Thread.new { yencode(file,@length) }
+  @t.priority += 1
+
+  @c = Thread.new {
+    while unprocessed > 0
+#    p.schedule do
       data = {}
+      to_upload = []
       #puts "Current thread count: " + Thread.list.count.to_s if @verbose
       data = @messages.pop
-      data = form_message(data)
-      upload(data,nzb)
+      to_upload[0] = form_message(data)
+      to_upload[1] = nzb
+      @to_post.push(to_upload)
+      #upload(data,nzb)
       @messages.synchronize do
-	@cond.signal
+        @cond.signal
       end
-    end
+#    end
     unprocessed -= 1
   end
+  }
+#  while unprocessed > 0
+#    p.schedule do
+#      data = {}
+#      to_upload = []
+      #puts "Current thread count: " + Thread.list.count.to_s if @verbose
+#      data = @messages.pop
+#      to_upload[0] = form_message(data)
+#      to_upload[1] = nzb
+#      @to_post.push(to_upload)
+      #upload(data,nzb)
+#      @messages.synchronize do
+#	@cond.signal
+#      end
+#    end
+#    unprocessed -= 1
+#  end
   
   if !@t.nil?
     @t.join
+  end
+  if @c.nil?
+    @c.join
   end
   
   nzbs << nzb
   c += 1
 end
 
-p.shutdown 
+#p.shutdown
+pool.each do |x|
+  x["uploading"] = false
+  x.join
+end
 @s.active = false
 puts
 
