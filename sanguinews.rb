@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.46'
+@version = '0.46.1'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -58,28 +58,40 @@ def yencode(file,length)
    end
 end
 
-def upload(data,nzb_file)
+def form_message(data)
   message = data[:yenc]
   length = data[:length]
   pcrc32 = data[:crc32]
   file = data[:file]
   chunk = data[:chunk]
-  response = ''
   crc32 = file.crc32
   fsize = file.size
   chunks = file.chunks
   basename = file.name
-# usenet works with ASCII
+  # usenet works with ASCII
   subject="#{@prefix}#{@dirprefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
   msg = NntpMsg.new(@from,@groups,subject)
   msg.poster = "sanguinews v#{@version} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
   msg.xna = @xna
   msg.message = message.force_encoding('ASCII-8BIT')
   msg.yenc_body(chunk,chunks,crc32,pcrc32,length,fsize,basename)
-  size = msg.size
   msg = msg.return_self
-  mfsize = msg.length
-  begin
+  result = {}
+  result[:message] = msg
+  result[:filename] = basename
+  result[:chunk] = chunk
+  result[:length] = length
+  return result
+end
+
+def upload(data,nzb_file)
+    msg = data[:message] #.force_encoding('ASCII-8BIT')
+    chunk = data[:chunk]
+    basename = data[:filename]
+    length = data[:length]
+    full_size = msg.length
+    response = ''
+    begin
     Net::NNTP.start(@server, @port, @username, @password, @mode) do |nntp|
       response = nntp.post msg
     end
@@ -92,7 +104,7 @@ def upload(data,nzb_file)
   if @verbose
     @s.log("Uploaded chunk Nr:#{chunk}")
   end
-  @s.uploaded = @s.uploaded + mfsize
+  @s.uploaded = @s.uploaded + full_size
   if @nzb
     msgid = ''
     response.each do |r|
@@ -296,6 +308,7 @@ files.each do |file|
       data = {}
       #puts "Current thread count: " + Thread.list.count.to_s if @verbose
       data = @messages.pop
+      data = form_message(data)
       upload(data,nzb)
       @messages.synchronize do
 	@cond.signal
