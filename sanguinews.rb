@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.47'
+@version = '0.47.1'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -59,6 +59,7 @@ def yencode(file,length,nzb)
       @messages.push(final_data)
       i += 1
    end
+   file.close
 end
 
 def form_message(data)

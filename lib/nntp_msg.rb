@@ -63,12 +63,15 @@ class NntpMsg
         trailer = "=yend size=#{part_size} part=#{current_part} pcrc32=#{pcrc32}"
       end
     end
-    @message = headerline + "\n#{@message}\n" + trailer
+    headerline << "\n#{@message}\n"
+    headerline << trailer
+    @message = headerline
   end
 
   def return_self
     header = self.create_header
-    return header + @message
+    header << @message
+    return header
   end
 
   def size
