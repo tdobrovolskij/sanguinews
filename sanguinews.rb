@@ -146,8 +146,8 @@ opt_parser = OptionParser.new do |opt|
   opt.separator  ""
   opt.separator  "Options"
 
-  opt.on("-c","--config CONFIG","use different config file") do |config|
-    options[:config] = config
+  opt.on("-c","--config CONFIG","use different config file") do |cfg|
+    options[:config] = cfg
   end
   opt.on("-f","--file FILE","upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
@@ -316,8 +316,7 @@ files.each do |file|
 
   @s.log("Uploading #{file}\n")
   file = FileToUpload.new(file)
-  fsize = file.size
-  crc32 = file.file_crc32
+  file.file_crc32
   chunks = file.chunks?(@length)
   @s.log("Chunks: #{chunks}") if @verbose
   basename = file.name
