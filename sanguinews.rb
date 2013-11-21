@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.47.1'
+@version = '0.47.2'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -36,14 +36,14 @@ load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
 load "#{File.dirname(__FILE__)}/lib/yencoded.rb"
 
 # Method returns yenc encoded string and crc32 value
-def yencode(file,length,nzb)
+def yencode(file,length,nzb,queue)
    i = 1
    until file.eof?
       bindata = file.read(length)
       # We can't take all memory, so we wait
-      @messages.synchronize do
+      queue.synchronize do
 	@cond.wait_while do
-	  @messages.length > @threads * 2
+	  queue.length > @threads * 2
 	end
       end
       data = {}
@@ -56,7 +56,7 @@ def yencode(file,length,nzb)
       data[:file] = file
       final_data[0] = form_message(data)
       final_data[1] = nzb
-      @messages.push(final_data)
+      queue.push(final_data)
       i += 1
    end
    file.close
@@ -86,6 +86,18 @@ def form_message(data)
   result[:chunk] = chunk
   result[:length] = length
   return result
+end
+
+def connect
+  begin
+    nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
+  rescue
+    #puts $!, $@ if @verbose
+    @s.log("Connection nr. #{x} has failed. Reconnecting...") if @verbose
+    sleep @delay
+    retry
+  end
+  return nntp
 end
 
 def parse_config(config)
@@ -223,11 +235,9 @@ end
 
 unprocessed = 0
 @lock=Mutex.new
-@messages = Queue.new
-@messages.extend(MonitorMixin)
-@cond = @messages.new_cond
-@to_post = Queue.new
-@to_post.extend(MonitorMixin)
+messages = Queue.new
+messages.extend(MonitorMixin)
+@cond = messages.new_cond
 nzbs = []
 @s = Speedometer.new("KB")
 @s.uploaded = 0
@@ -242,24 +252,17 @@ pool = []
 @threads.times do |x|
   pool[x] = Thread.new {
 
-    @messages.synchronize do
+    messages.synchronize do
       @cond.wait_while do
 	uploading == false
       end
     end
-
-    begin
-      nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
-    rescue
-      #puts $!, $@ if @verbose
-      @s.log("Connection nr. #{x} has failed. Reconnecting...") if @verbose
-      sleep @delay
-      retry
-    end
     
-    until @messages.empty?
-      stuff = @messages.pop
-      @messages.synchronize do
+    nntp = connect
+
+    until messages.empty?
+      stuff = messages.pop
+      messages.synchronize do
         @cond.signal
       end
 
@@ -338,10 +341,10 @@ files.each do |file|
   end
 
   # let's give a little bit higher priority for file processing thread
-  @t = Thread.new { yencode(file,@length,nzb) }
+  @t = Thread.new { yencode(file,@length,nzb,messages) }
   @t.priority += 2
 
-   @messages.synchronize do
+   messages.synchronize do
      uploading = true
      @cond.signal
    end
