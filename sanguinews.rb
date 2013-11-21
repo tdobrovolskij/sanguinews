@@ -88,7 +88,7 @@ def form_message(data)
   return result
 end
 
-def connect
+def connect(x)
   begin
     nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
   rescue
@@ -258,7 +258,7 @@ pool = []
       end
     end
     
-    nntp = connect
+    nntp = connect(x)
 
     until messages.empty?
       stuff = messages.pop
