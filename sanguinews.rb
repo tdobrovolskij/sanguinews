@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.48'
+@version = '0.48.1'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -241,11 +241,7 @@ messages.extend(MonitorMixin)
 nzbs = []
 @s = Speedometer.new("KB")
 @s.uploaded = 0
-Thread.new {
-  while @s.active
-    @s.display
-  end
-}
+@s.start
 uploading = false
 
 pool = []
@@ -360,7 +356,7 @@ end
 pool.each do |x|
   x.join
 end
-@s.active = false
+@s.stop
 puts
 
 if @nzb
