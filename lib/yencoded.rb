@@ -21,7 +21,7 @@ require 'inline'
 class Yencoded
   inline do |builder|
     builder.c "
-    char *yenc(char *bindata,long datalen) {
+    static VALUE yenc(char *bindata,long datalen) {
      int i=0;
       int linelen=128;
       long restlen;
@@ -29,7 +29,7 @@ class Yencoded
       unsigned char c;
       unsigned char *output;
       unsigned char *start;
-      char *result;
+      VALUE result;
 
       restlen = datalen;                    //restlen is our byte processing counter
       destlen = restlen;                    //will be needing this for memory allocation
@@ -74,8 +74,7 @@ class Yencoded
       }
       *output=0;			   //NULL termination is required
       destlen++;
-      result=malloc(destlen*sizeof(char));
-      result=memcpy(result,start,destlen);
+      result=rb_str_new2((char*)start);
       free(start);
       return result; 
     }"
