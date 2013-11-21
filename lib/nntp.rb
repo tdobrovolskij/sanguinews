@@ -218,8 +218,8 @@ module Net  #:nodoc:
       @port = (port || NNTP.default_port)
       @socket = nil
       @started = false
-      @open_timeout = 40
-      @read_timeout = 120
+      @open_timeout = 30
+      @read_timeout = 60
       @error_occured = false
       @debug_output = nil
     end
