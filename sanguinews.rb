@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.48.1'
+@version = '0.48.2'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -29,7 +29,7 @@ require 'tempfile'
 require 'nzb'
 require 'parseconfig'
 require 'speedometer'
-#load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
+load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp.rb"
 load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
 load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
@@ -43,7 +43,7 @@ def yencode(file,length,nzb,queue)
       # We can't take all memory, so we wait
       queue.synchronize do
 	@cond.wait_while do
-	  queue.length > @threads * 2
+	  queue.length > @threads * 3
 	end
       end
       data = {}
@@ -223,7 +223,6 @@ end
 
 # "max" is needed only in dirmode
 max = files.length
-c = 1
 # for dirmode nzb file's header should be written before we start processing
 if dirmode
   dirname = File.basename(directory)
@@ -234,7 +233,8 @@ if dirmode
 end
 
 unprocessed = 0
-@lock=Mutex.new
+file_lock=Mutex.new
+info_lock=Mutex.new
 messages = Queue.new
 messages.extend(MonitorMixin)
 @cond = messages.new_cond
@@ -244,62 +244,16 @@ nzbs = []
 @s.start
 uploading = false
 
-pool = []
-@threads.times do |x|
-  pool[x] = Thread.new {
-
-    messages.synchronize do
-      @cond.wait_while do
-	uploading == false
-      end
-    end
-    
+pool = Queue.new
+Thread.new {
+  @threads.times do |x|
     nntp = connect(x)
+    pool.push(nntp)
+  end
+}
 
-    until messages.empty?
-      stuff = messages.pop
-      messages.synchronize do
-        @cond.signal
-      end
-
-      data = stuff[0]
-      nzb_file = stuff[1]
-      msg = data[:message] #.force_encoding('ASCII-8BIT')
-      chunk = data[:chunk]
-      basename = data[:filename]
-      length = data[:length]
-      full_size = msg.length
-      response = ''
-
-      begin
-	response = nntp.post msg
-      rescue
-	#puts $!, $@ if @verbose
-        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
-        sleep @delay
-	retry
-      end
-
-      if @verbose
-        @s.log("Uploaded chunk Nr:#{chunk}")
-      end
-
-      @s.uploaded = @s.uploaded + full_size
-      if @nzb
-        msgid = ''
-        response.each do |r|
-          msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
-        end
-        @lock.synchronize do
-	  nzb_file.write_segment(length,chunk,msgid)
-	  unprocessed -= 1
-	end
-      end
-
-    end
-    nntp.finish
-  }
-end
+p = Pool.new(@threads)
+informed = {}
 
 files.each do |file|
   next if !File.file?(file)
@@ -313,16 +267,14 @@ files.each do |file|
 
   @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
 
-  @s.log("Uploading #{file}\n")
+  informed[file.to_s] = false
   file = FileToUpload.new(file)
   file.file_crc32
   chunks = file.chunks?(@length)
-  @s.log("Chunks: #{chunks}") if @verbose
   basename = file.name
   subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
-  @s.log(subject)
 
-  @lock.synchronize do
+  info_lock.synchronize do
     unprocessed += chunks
   end
 
@@ -340,22 +292,73 @@ files.each do |file|
   @t = Thread.new { yencode(file,@length,nzb,messages) }
   @t.priority += 2
 
-   messages.synchronize do
-     uploading = true
-     @cond.signal
-   end
-  
+  until unprocessed == 0
+    p.schedule do
+      nntp = pool.pop
+      stuff = messages.pop
+      messages.synchronize do
+        @cond.signal
+      end
+
+      data = stuff[0]
+      nzb_file = stuff[1]
+      msg = data[:message] 
+      chunk = data[:chunk]
+      basename = data[:filename]
+      length = data[:length]
+      full_size = msg.length
+      info_lock.synchronize do
+        if !informed[basename.to_sym]
+          @s.log("Uploading #{basename}\n")
+          @s.log(subject)
+          @s.log("Chunks: #{chunks}") if @verbose
+	  informed[basename.to_sym] = true
+        end
+      end
+      response = ''
+
+      begin
+        response = nntp.post msg
+      rescue
+        #puts $!, $@ if @verbose
+        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
+        sleep @delay
+        retry
+      end
+
+      if @verbose
+        @s.log("Uploaded chunk Nr:#{chunk}")
+      end
+
+      @s.uploaded = @s.uploaded + full_size
+      if @nzb
+        msgid = ''
+        response.each do |r|
+          msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
+        end
+        file_lock.synchronize do
+          nzb_file.write_segment(length,chunk,msgid)
+        end
+      end
+      pool.push(nntp)
+    end
+    unprocessed -= 1
+  end
+
   if !@t.nil?
     @t.join
   end
   
   nzbs << nzb
-  c += 1
 end
 
-pool.each do |x|
-  x.join
+p.shutdown
+
+until pool.empty?
+  nntp = pool.pop
+  nntp.finish
 end
+
 @s.stop
 puts
 
