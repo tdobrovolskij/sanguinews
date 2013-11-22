@@ -295,11 +295,11 @@ files.each do |file|
 
   until unprocessed == 0
     p.schedule do
-      nntp = pool.pop
       stuff = messages.pop
       messages.synchronize do
         @cond.signal
       end
+      nntp = pool.pop
 
       data = stuff[0]
       nzb_file = stuff[1]
