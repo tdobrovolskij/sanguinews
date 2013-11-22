@@ -267,7 +267,7 @@ files.each do |file|
 
   @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
 
-  informed[file.to_s] = false
+  informed[file.to_sym] = false
   file = FileToUpload.new(file)
   file.file_crc32
   chunks = file.chunks?(@length)
