@@ -223,6 +223,7 @@ end
 
 # "max" is needed only in dirmode
 max = files.length
+c = 1
 # for dirmode nzb file's header should be written before we start processing
 if dirmode
   dirname = File.basename(directory)
@@ -350,6 +351,7 @@ files.each do |file|
   end
   
   nzbs << nzb
+  c += 1
 end
 
 p.shutdown
