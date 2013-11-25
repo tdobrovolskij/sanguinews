@@ -29,11 +29,11 @@ require 'tempfile'
 require 'nzb'
 require 'parseconfig'
 require 'speedometer'
-load "#{File.dirname(__FILE__)}/lib/thread-pool.rb"
-load "#{File.dirname(__FILE__)}/lib/nntp.rb"
-load "#{File.dirname(__FILE__)}/lib/nntp_msg.rb"
-load "#{File.dirname(__FILE__)}/lib/file_to_upload.rb"
-load "#{File.dirname(__FILE__)}/lib/yencoded.rb"
+require_relative 'lib/thread-pool'
+require_relative 'lib/nntp'
+require_relative 'lib/nntp_msg'
+require_relative 'lib/file_to_upload'
+require_relative 'lib/yencoded'
 
 # Method returns yenc encoded string and crc32 value
 def yencode(file,length,nzb,queue)
