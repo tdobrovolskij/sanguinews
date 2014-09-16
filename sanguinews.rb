@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.48.2'
+@version = '0.50a'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -36,7 +36,7 @@ require_relative 'lib/file_to_upload'
 require_relative 'lib/yencoded'
 
 # Method returns yenc encoded string and crc32 value
-def yencode(file,length,nzb,queue)
+def yencode(file,length,queue)
    i = 1
    until file.eof?
       bindata = file.read(length)
@@ -55,11 +55,10 @@ def yencode(file,length,nzb,queue)
       data[:chunk] = i
       data[:file] = file
       final_data[0] = form_message(data)
-      final_data[1] = nzb
+      final_data[1] = file
       queue.push(final_data)
       i += 1
    end
-   file.close
 end
 
 def form_message(data)
@@ -73,7 +72,7 @@ def form_message(data)
   chunks = file.chunks
   basename = file.name
   # usenet works with ASCII
-  subject="#{@prefix}#{@dirprefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
+  subject="#{@prefix}#{file.dir_prefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
   msg = NntpMsg.new(@from,@groups,subject)
   msg.poster = "sanguinews v#{@version} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
   msg.xna = @xna
@@ -113,7 +112,6 @@ def parse_config(config)
   @delay = config['reconnect_delay'].to_i
   @groups = config['groups']
   @prefix = config['prefix']
-  @dirprefix = ''
   ssl = config['ssl']
   if ssl == 'yes'
     @mode = :tls
@@ -150,7 +148,6 @@ banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multit
 banner << ""
 # option parser
 options = {}
-dirmode = true
 filemode = false
 
 opt_parser = OptionParser.new do |opt|
@@ -164,7 +161,6 @@ opt_parser = OptionParser.new do |opt|
   opt.on("-f","--file FILE","upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
     filemode = true
-    dirmode = false
   end
   opt.on("-h","--help","help") do
     banner.each do |msg|
@@ -204,7 +200,7 @@ files << options[:file].to_s if filemode
 
 @username = username if ! username.nil?
 @password = password if ! password.nil?
-directory = ARGV[0] if dirmode
+directory = ARGV[0] if !filemode
 # in file mode treat every additional parameter as a file
 if !ARGV.empty? and filemode
   ARGV.each do |file|
@@ -213,7 +209,7 @@ if !ARGV.empty? and filemode
 end
 
 # skip hidden files
-if dirmode
+if !filemode
   directory = directory + "/" if !directory.end_with?('/')
   Dir.foreach(directory) do |item|
     next if item.start_with?('.')
@@ -224,14 +220,6 @@ end
 # "max" is needed only in dirmode
 max = files.length
 c = 1
-# for dirmode nzb file's header should be written before we start processing
-if dirmode
-  dirname = File.basename(directory)
-  if @nzb
-    @nzb = Nzb.new(dirname,"sanguinews_")
-    @nzb.write_header
-  end
-end
 
 unprocessed = 0
 file_lock=Mutex.new
@@ -239,7 +227,7 @@ info_lock=Mutex.new
 messages = Queue.new
 messages.extend(MonitorMixin)
 @cond = messages.new_cond
-nzbs = []
+files_to_process = []
 @s = Speedometer.new("KB")
 @s.uploaded = 0
 @s.start
@@ -258,97 +246,79 @@ informed = {}
 
 files.each do |file|
   next if !File.file?(file)
-  if filemode
-    if @nzb
-      basename = File.basename(file)
-      @nzb = Nzb.new(basename,"sanguinews_")
-      @nzb.write_header
-    end
-  end
-
-  @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
 
   informed[file.to_sym] = false
   file = FileToUpload.new({ :name => file, :chunk_length => @length,
-    :prefix => @prefix, :dir_prefix => @dirprefix })
+    :prefix => @prefix, :current => c, :last => max, :filemode => filemode,
+    :from => @from, :groups => @groups, :nzb => @nzb })
 
   info_lock.synchronize do
     unprocessed += file.chunks
   end
 
-
-  if @nzb
-    if filemode
-      nzb = @nzb
-    else
-      nzb = Nzb.new(file.name, "tmp_")
-    end
-    nzb.write_file_header(@from, file.subject, @groups)
-  end
-
-  # let's give a little bit higher priority for file processing thread
-  @t = Thread.new { yencode(file,@length,nzb,messages) }
-  @t.priority += 2
-
-  until unprocessed == 0
-    p.schedule do
-      stuff = messages.pop
-      messages.synchronize do
-        @cond.signal
-      end
-      nntp = pool.pop
-
-      data = stuff[0]
-      nzb_file = stuff[1]
-      msg = data[:message] 
-      chunk = data[:chunk]
-      basename = data[:filename]
-      length = data[:length]
-      full_size = msg.length
-      info_lock.synchronize do
-        if !informed[basename.to_sym]
-          @s.log("Uploading #{basename}\n")
-          @s.log(file.subject)
-          @s.log("Chunks: #{file.chunks}") if @verbose
-	  informed[basename.to_sym] = true
-        end
-      end
-      response = ''
-
-      begin
-        response = nntp.post msg
-      rescue
-        #puts $!, $@ if @verbose
-        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
-        sleep @delay
-        retry
-      end
-
-      if @verbose
-        @s.log("Uploaded chunk Nr:#{chunk}")
-      end
-
-      @s.uploaded = @s.uploaded + full_size
-      if @nzb
-        msgid = ''
-        response.each do |r|
-          msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
-        end
-        file_lock.synchronize do
-          nzb_file.write_segment(length,chunk,msgid)
-        end
-      end
-      pool.push(nntp)
-    end
-    unprocessed -= 1
-  end
-
-  if !@t.nil?
-    @t.join
-  end
-  
-  nzbs << nzb
+  files_to_process << file
   c += 1
+end
+
+# let's give a little bit higher priority for file processing thread
+@t = Thread.new {
+  files_to_process.each do |file|
+    yencode(file,@length,messages)
+  end
+}
+@t.priority += 2
+
+until unprocessed == 0
+  p.schedule do
+    stuff = messages.pop
+    messages.synchronize do
+      @cond.signal
+    end
+    nntp = pool.pop
+
+    data = stuff[0]
+    file = stuff[1]
+    msg = data[:message] 
+    chunk = data[:chunk]
+    basename = data[:filename]
+    length = data[:length]
+    full_size = msg.length
+    info_lock.synchronize do
+      if !informed[basename.to_sym]
+        @s.log("Uploading #{basename}\n")
+        @s.log(file.subject)
+        @s.log("Chunks: #{file.chunks}") if @verbose
+        informed[basename.to_sym] = true
+      end
+    end
+    response = ''
+
+    begin
+      response = nntp.post msg
+    rescue
+      #puts $!, $@ if @verbose
+      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
+      sleep @delay
+      retry
+    end
+
+    if @verbose
+      @s.log("Uploaded chunk Nr:#{chunk}")
+    end
+
+    @s.uploaded = @s.uploaded + full_size
+    if @nzb
+      msgid = ''
+      response.each do |r|
+        msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
+      end
+      file_lock.synchronize do
+        file.working_nzb.write_segment(length,chunk,msgid)
+      end
+    end
+    pool.push(nntp)
+  end
+  unprocessed -= 1
 end
 
 p.shutdown
@@ -361,20 +331,12 @@ end
 @s.stop
 puts
 
-if @nzb
-  nzbs.each do |n|
-    n.write_file_footer
-    if filemode
-      n.write_footer
-    else
-      nzb_name = File.open(n.nzb_filename,"r")
-      nzb = nzb_name.read
-      orig_nzb = File.open(@nzb.nzb_filename,"a")
-      orig_nzb.puts nzb
-      orig_nzb.close
-      nzb_name.close
-      File.delete(nzb_name)
-    end
-  end
-  @nzb.write_footer if @nzb and dirmode
+nzbs = []
+files_to_process.each do |file|
+  nzbs << file.nzb
+  file.close
+end
+
+nzbs.uniq!.each do |nzb|
+  nzb.write_footer if @nzb and !filemode
 end
