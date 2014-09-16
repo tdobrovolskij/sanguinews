@@ -269,14 +269,11 @@ files.each do |file|
   @dirprefix = dirname + " [#{c}/#{max}] - " if dirmode
 
   informed[file.to_sym] = false
-  file = FileToUpload.new(file)
-  file.file_crc32
-  chunks = file.chunks?(@length)
-  basename = file.name
-  subject = "#{@prefix}#{@dirprefix}#{basename} yEnc (1/#{chunks})"
+  file = FileToUpload.new({ :name => file, :chunk_length => @length,
+    :prefix => @prefix, :dir_prefix => @dirprefix })
 
   info_lock.synchronize do
-    unprocessed += chunks
+    unprocessed += file.chunks
   end
 
 
@@ -284,9 +281,9 @@ files.each do |file|
     if filemode
       nzb = @nzb
     else
-      nzb = Nzb.new(basename,"tmp_")
+      nzb = Nzb.new(file.name, "tmp_")
     end
-    nzb.write_file_header(@from,subject,@groups)
+    nzb.write_file_header(@from, file.subject, @groups)
   end
 
   # let's give a little bit higher priority for file processing thread
@@ -311,8 +308,8 @@ files.each do |file|
       info_lock.synchronize do
         if !informed[basename.to_sym]
           @s.log("Uploading #{basename}\n")
-          @s.log(subject)
-          @s.log("Chunks: #{chunks}") if @verbose
+          @s.log(file.subject)
+          @s.log("Chunks: #{file.chunks}") if @verbose
 	  informed[basename.to_sym] = true
         end
       end

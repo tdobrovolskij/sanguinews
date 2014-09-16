@@ -18,17 +18,27 @@
 require 'zlib'
 
 class FileToUpload < File
-  attr_accessor :name, :chunks, :crc32
+  attr_accessor :name, :chunks, :crc32, :subject
   
-  def initialize(name,mode="rb")
-    super(name,mode)
-    @name = File.basename(name)
+  def initialize(var)
+    var[:mode] = "rb" if var[:mode].nil?
+
+    super(var[:name], var[:mode])
+    self.chunks?(var[:chunk_length])
+    self.subj(var[:prefix], var[:dir_prefix])
+    self.file_crc32
+    @name = File.basename(var[:name])
   end
+
+  def subj(prefix, dir_prefix)
+    @subject = "#{prefix}#{dir_prefix}#{@name} yEnc (1/#{@chunks})"
+  end
+
+  private
 
   def chunks?(chunk_length)
     chunks = self.size.to_f / chunk_length
     @chunks = chunks.ceil
-    return @chunks
   end
 
   # Method from y_enc gem
@@ -37,6 +47,6 @@ class FileToUpload < File
     f = self.read
     @crc32 = Zlib.crc32(f,0).to_s(16)
     self.rewind
-    return @crc32
   end
+
 end
