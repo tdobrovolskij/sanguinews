@@ -51,7 +51,7 @@ class FileToUpload < File
           nzb_name.close
           File.delete(nzb_name)
         end
-      @nzb.write_footer if @nzb and !@filemode
+      @nzb.write_footer if !@filemode
     end
     super
   end

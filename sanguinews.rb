@@ -331,12 +331,6 @@ end
 @s.stop
 puts
 
-nzbs = []
 files_to_process.each do |file|
-  nzbs << file.nzb
   file.close
-end
-
-nzbs.uniq!.each do |nzb|
-  nzb.write_footer if @nzb and !filemode
 end
