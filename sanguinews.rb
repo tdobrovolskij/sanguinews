@@ -26,7 +26,6 @@ require 'monitor'
 require 'date'
 require 'tempfile'
 # Following non-standard gems are needed
-require 'nzb'
 require 'parseconfig'
 require 'speedometer'
 require_relative 'lib/thread-pool'
@@ -309,7 +308,7 @@ until unprocessed == 0
       response.each do |r|
         msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
       end
-      file.nzb.save_segment(length, chunk, msgid)
+      file.write_segment_info(length, chunk, msgid)
     end
     pool.push(nntp)
   end

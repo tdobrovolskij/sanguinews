@@ -50,6 +50,10 @@ class FileToUpload < File
     super()
   end
 
+  def write_segment_info(length, chunk, msgid)
+    @nzb.save_segment(length, chunk, msgid) if @nzb
+  end
+
   # Method from y_enc gem
   # Big thanks to Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend)
   def file_crc32
