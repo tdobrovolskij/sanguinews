@@ -32,18 +32,22 @@ class FileToUpload < File
     @name = File.basename(var[:name])
     chunk_amount(var[:chunk_length])
     common_name(var)
-    nzb_init(var[:from], var[:groups]) if var[:nzb]
+    if var[:nzb]
+      @from = var[:from]
+      @groups = var[:groups]
+      nzb_init
+    end
     return @name
   end
 
   def close(last=false)
     if @nzb
-      @nzb.write_file_header(from, @subject, groups)
+      @nzb.write_file_header(@from, @subject, @groups)
       @nzb.write_segments
       @nzb.write_file_footer
       @nzb.write_footer if @filemode || last
     end
-    super
+    super()
   end
 
   # Method from y_enc gem
@@ -71,7 +75,7 @@ class FileToUpload < File
       @subject = "#{var[:prefix]}#{@dir_prefix}#{@name} yEnc (1/#{@chunks})"
   end
 
-  def nzb_init(from, groups)
+  def nzb_init
     @nzb = Nzb.new(@cname, "sanguinews_")
     @nzb.write_header
   end
