@@ -52,6 +52,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.50 - Rewrote big part of the code. New libraries. More stable speed.
 * 0.48 - Got rid of memory leaks.
 * 0.47 - Reusing old connections instead of opening new ones.
 * 0.46 - Upload speed is now displayed.
