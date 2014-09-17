@@ -20,7 +20,7 @@ require 'nzb'
 
 class FileToUpload < File
   attr_accessor :name, :chunks, :subject
-  attr_reader :crc32, :nzb, :dir_prefix, :cname, :working_nzb
+  attr_reader :crc32, :nzb, :dir_prefix, :cname
   
   def initialize(var)
     @dir_prefix = ''
@@ -36,19 +36,12 @@ class FileToUpload < File
     return @name
   end
 
-  def close
+  def close(last=false)
     if @nzb
-      @working_nzb.write_file_footer
-        if !@filemode
-          nzb_name = File.open(@working_nzb.nzb_filename, "r")
-          nzb = nzb_name.read
-          orig_nzb = File.open(@nzb.nzb_filename, "a")
-          orig_nzb.puts nzb
-          orig_nzb.close
-          nzb_name.close
-          File.delete(nzb_name)
-        end
-      @nzb.write_footer if @filemode || Dir.glob("tmp_*").empty?
+      @nzb.write_file_header(from, @subject, groups)
+      @nzb.write_segments
+      @nzb.write_file_footer
+      @nzb.write_footer if @filemode || last
     end
     super
   end
@@ -81,14 +74,6 @@ class FileToUpload < File
   def nzb_init(from, groups)
     @nzb = Nzb.new(@cname, "sanguinews_")
     @nzb.write_header
-
-    if @filemode
-      @working_nzb = @nzb
-    else
-      @working_nzb = Nzb.new(@cname, "tmp_")
-    end
-
-    @working_nzb.write_file_header(from, @subject, groups)
   end
 
 end

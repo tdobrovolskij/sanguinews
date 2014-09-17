@@ -217,7 +217,6 @@ max = files.length
 c = 1
 
 unprocessed = 0
-file_lock=Mutex.new
 info_lock=Mutex.new
 messages = Queue.new
 messages.extend(MonitorMixin)
@@ -310,9 +309,7 @@ until unprocessed == 0
       response.each do |r|
         msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
       end
-      file_lock.synchronize do
-        file.working_nzb.write_segment(length, chunk, msgid)
-      end
+      file.working_nzb.save_segment(length, chunk, msgid)
     end
     pool.push(nntp)
   end
@@ -330,5 +327,10 @@ end
 puts
 
 files_to_process.each do |file|
-  file.close
+  if files_to_process.last == file
+    last = true
+  else
+    last = false
+  end
+  file.close(last)
 end
