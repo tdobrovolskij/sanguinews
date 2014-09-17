@@ -39,9 +39,7 @@ class FileToUpload < File
   def close
     if @nzb
       @working_nzb.write_file_footer
-        if @filemode
-          @working_nzb.write_footer
-        else
+        if !@filemode
           nzb_name = File.open(@working_nzb.nzb_filename,"r")
           nzb = nzb_name.read
           orig_nzb = File.open(@nzb.nzb_filename,"a")
@@ -50,7 +48,7 @@ class FileToUpload < File
           nzb_name.close
           File.delete(nzb_name)
         end
-      @nzb.write_footer if !@filemode
+      @nzb.write_footer if @filemode or Dir.glob("tmp_*").empty?
     end
     super
   end
