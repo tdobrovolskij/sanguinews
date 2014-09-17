@@ -1,18 +1,18 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    RubyInline (3.12.2)
+    RubyInline (3.12.3)
       ZenTest (~> 4.3)
-    ZenTest (4.9.5)
-    nzb (0.2.1)
-    parseconfig (1.0.2)
-    speedometer (0.0.4)
+    ZenTest (4.10.1)
+    nzb (0.2.2)
+    parseconfig (1.0.4)
+    speedometer (0.0.5)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   RubyInline
-  nzb (>= 0.2.1)
+  nzb (>= 0.2.2)
   parseconfig
-  speedometer (>= 0.0.4)
+  speedometer (>= 0.0.5)
