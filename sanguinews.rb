@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.50a'
+@version = '0.50b'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -263,11 +263,11 @@ end
 @t = Thread.new {
   files_to_process.each do |file|
     file.file_crc32
+    @s.log("Encoding #{file.name}\n")
     yencode(file,@length,messages)
   end
 }
 @t.priority += 2
-@s.start
 
 until unprocessed == 0
   p.schedule do
@@ -294,6 +294,7 @@ until unprocessed == 0
     end
     response = ''
 
+    @s.start
     begin
       response = nntp.post msg
     rescue
