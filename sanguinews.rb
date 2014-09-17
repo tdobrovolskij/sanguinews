@@ -230,7 +230,6 @@ messages.extend(MonitorMixin)
 files_to_process = []
 @s = Speedometer.new("KB")
 @s.uploaded = 0
-@s.start
 uploading = false
 
 pool = Queue.new
@@ -263,10 +262,12 @@ end
 # let's give a little bit higher priority for file processing thread
 @t = Thread.new {
   files_to_process.each do |file|
+    file.file_crc32
     yencode(file,@length,messages)
   end
 }
 @t.priority += 2
+@s.start
 
 until unprocessed == 0
   p.schedule do

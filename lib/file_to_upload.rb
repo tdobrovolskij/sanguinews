@@ -31,7 +31,6 @@ class FileToUpload < File
     @filemode = var[:filemode]
     @name = File.basename(var[:name])
     chunks?(var[:chunk_length])
-    file_crc32
     common_name(var)
     nzb_init(var[:from], var[:groups]) if var[:nzb]
     return @name
@@ -54,6 +53,14 @@ class FileToUpload < File
       @nzb.write_footer if !@filemode
     end
     super
+  end
+
+  # Method from y_enc gem
+  # Big thanks to Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend)
+  def file_crc32
+    f = self.read
+    @crc32 = Zlib.crc32(f,0).to_s(16)
+    self.rewind
   end
 
   private
@@ -84,14 +91,6 @@ class FileToUpload < File
     end
 
     @working_nzb.write_file_header(from, @subject, groups)
-  end
-
-  # Method from y_enc gem
-  # Big thanks to Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend)
-  def file_crc32
-    f = self.read
-    @crc32 = Zlib.crc32(f,0).to_s(16)
-    self.rewind
   end
 
 end
