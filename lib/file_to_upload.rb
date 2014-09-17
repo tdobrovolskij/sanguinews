@@ -30,7 +30,7 @@ class FileToUpload < File
     super(var[:name], var[:mode])
     @filemode = var[:filemode]
     @name = File.basename(var[:name])
-    chunks?(var[:chunk_length])
+    chunk_amount(var[:chunk_length])
     common_name(var)
     nzb_init(var[:from], var[:groups]) if var[:nzb]
     return @name
@@ -40,15 +40,15 @@ class FileToUpload < File
     if @nzb
       @working_nzb.write_file_footer
         if !@filemode
-          nzb_name = File.open(@working_nzb.nzb_filename,"r")
+          nzb_name = File.open(@working_nzb.nzb_filename, "r")
           nzb = nzb_name.read
-          orig_nzb = File.open(@nzb.nzb_filename,"a")
+          orig_nzb = File.open(@nzb.nzb_filename, "a")
           orig_nzb.puts nzb
           orig_nzb.close
           nzb_name.close
           File.delete(nzb_name)
         end
-      @nzb.write_footer if @filemode or Dir.glob("tmp_*").empty?
+      @nzb.write_footer if @filemode || Dir.glob("tmp_*").empty?
     end
     super
   end
@@ -57,13 +57,13 @@ class FileToUpload < File
   # Big thanks to Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend)
   def file_crc32
     f = self.read
-    @crc32 = Zlib.crc32(f,0).to_s(16)
+    @crc32 = Zlib.crc32(f, 0).to_s(16)
     self.rewind
   end
 
   private
 
-  def chunks?(chunk_length)
+  def chunk_amount(chunk_length)
     chunks = self.size.to_f / chunk_length
     @chunks = chunks.ceil
   end
@@ -79,7 +79,7 @@ class FileToUpload < File
   end
 
   def nzb_init(from, groups)
-    @nzb = Nzb.new(@cname,"sanguinews_")
+    @nzb = Nzb.new(@cname, "sanguinews_")
     @nzb.write_header
 
     if @filemode

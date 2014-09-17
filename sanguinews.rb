@@ -36,7 +36,7 @@ require_relative 'lib/file_to_upload'
 require_relative 'lib/yencoded'
 
 # Method returns yenc encoded string and crc32 value
-def yencode(file,length,queue)
+def yencode(file, length, queue)
    i = 1
    until file.eof?
       bindata = file.read(length)
@@ -49,8 +49,8 @@ def yencode(file,length,queue)
       data = {}
       final_data = []
       len = bindata.length
-      data[:yenc] = Yencoded.new.yenc(bindata,len)
-      data[:crc32] = Zlib.crc32(bindata,0).to_s(16)
+      data[:yenc] = Yencoded.new.yenc(bindata, len)
+      data[:crc32] = Zlib.crc32(bindata, 0).to_s(16)
       data[:length] = len
       data[:chunk] = i
       data[:file] = file
@@ -73,18 +73,13 @@ def form_message(data)
   basename = file.name
   # usenet works with ASCII
   subject="#{@prefix}#{file.dir_prefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
-  msg = NntpMsg.new(@from,@groups,subject)
+  msg = NntpMsg.new(@from, @groups, subject)
   msg.poster = "sanguinews v#{@version} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
   msg.xna = @xna
   msg.message = message.force_encoding('ASCII-8BIT')
-  msg.yenc_body(chunk,chunks,crc32,pcrc32,length,fsize,basename)
+  msg.yenc_body(chunk, chunks, crc32, pcrc32, length, fsize, basename)
   msg = msg.return_self
-  result = {}
-  result[:message] = msg
-  result[:filename] = basename
-  result[:chunk] = chunk
-  result[:length] = length
-  return result
+  result = { message: msg, filename: basename, chunk: chunk, length: length }
 end
 
 def connect(x)
@@ -155,14 +150,14 @@ opt_parser = OptionParser.new do |opt|
   opt.separator  ""
   opt.separator  "Options"
 
-  opt.on("-c","--config CONFIG","use different config file") do |cfg|
+  opt.on("-c", "--config CONFIG", "use different config file") do |cfg|
     options[:config] = cfg
   end
-  opt.on("-f","--file FILE","upload FILE, treat all additional parameters as files") do |file|
+  opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
     filemode = true
   end
-  opt.on("-h","--help","help") do
+  opt.on("-h", "--help", "help") do
     banner.each do |msg|
       puts msg
     end
@@ -170,13 +165,13 @@ opt_parser = OptionParser.new do |opt|
     puts
     exit
   end
-  opt.on("-p","--password PASSWORD","use PASSWORD as your password(overwrites config file)") do |password|
+  opt.on("-p", "--password PASSWORD", "use PASSWORD as your password(overwrites config file)") do |password|
     options[:password] = password
   end
-  opt.on("-u","--user USERNAME","use USERNAME as your username(overwrites config file)") do |username|
+  opt.on("-u", "--user USERNAME", "use USERNAME as your username(overwrites config file)") do |username|
     options[:username] = username
   end
-  opt.on("-v","--verbose","be verbose?") do
+  opt.on("-v", "--verbose", "be verbose?") do
     options[:verbose] = true
   end
 end
@@ -198,11 +193,11 @@ parse_config(optconfig) if File.exist?(optconfig)
 options[:verbose] ? @verbose = true : @verbose = false
 files << options[:file].to_s if filemode
 
-@username = username if ! username.nil?
-@password = password if ! password.nil?
-directory = ARGV[0] if !filemode
+@username = username unless username.nil?
+@password = password unless password.nil?
+directory = ARGV[0] unless filemode
 # in file mode treat every additional parameter as a file
-if !ARGV.empty? and filemode
+if !ARGV.empty? && filemode
   ARGV.each do |file|
     files << file.to_s
   end
@@ -210,7 +205,7 @@ end
 
 # skip hidden files
 if !filemode
-  directory = directory + "/" if !directory.end_with?('/')
+  directory = directory + "/" unless directory.end_with?('/')
   Dir.foreach(directory) do |item|
     next if item.start_with?('.')
     files << directory+item
@@ -247,9 +242,11 @@ files.each do |file|
   next if !File.file?(file)
 
   informed[file.to_sym] = false
-  file = FileToUpload.new({ :name => file, :chunk_length => @length,
-    :prefix => @prefix, :current => c, :last => max, :filemode => filemode,
-    :from => @from, :groups => @groups, :nzb => @nzb })
+  file = FileToUpload.new(
+    name: file, chunk_length: @length,
+    prefix: @prefix, current: c, last: max, filemode: filemode,
+    from: @from, groups: @groups, nzb: @nzb
+  )
 
   info_lock.synchronize do
     unprocessed += file.chunks
@@ -264,7 +261,7 @@ end
   files_to_process.each do |file|
     file.file_crc32
     @s.log("Encoding #{file.name}\n")
-    yencode(file,@length,messages)
+    yencode(file, @length, messages)
   end
 }
 @t.priority += 2
@@ -312,10 +309,10 @@ until unprocessed == 0
     if @nzb
       msgid = ''
       response.each do |r|
-        msgid = r.sub(/>.*/,'').tr("<",'') if r.end_with?('Article posted')
+        msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
       end
       file_lock.synchronize do
-        file.working_nzb.write_segment(length,chunk,msgid)
+        file.working_nzb.write_segment(length, chunk, msgid)
       end
     end
     pool.push(nntp)
