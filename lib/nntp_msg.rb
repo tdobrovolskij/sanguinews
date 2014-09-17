@@ -21,13 +21,13 @@ require 'date'
 class NntpMsg
   attr_accessor :message, :from, :groups, :subject, :poster, :date, :xna
 
-  def initialize(from,groups,subject,message='',date=nil,poster=nil)
+  def initialize(from, groups, subject, message='', date=nil, poster=nil)
     @from = from
     @groups = groups
     @subject = subject
     @message = message
     if date.nil?
-      @date = DateTime.now().strftime(fmt='%a, %d %b %Y %T %z')
+      @date = DateTime.now().strftime('%a, %d %b %Y %T %z')
     else
       @date = date
     end
@@ -35,11 +35,11 @@ class NntpMsg
   end
 
   def create_header
-    sio = StringIO.new("","w:ASCII-8BIT")
+    sio = StringIO.new("", "w:ASCII-8BIT")
     sio.puts "From: #{@from}"
     sio.puts "Newsgroups: #{@groups}"
     sio.puts "Subject: #{@subject}"
-    sio.puts "X-Newsposter: #{@poster}" if !poster.nil?
+    sio.puts "X-Newsposter: #{@poster}" unless poster.nil?
     sio.puts "X-No-Archive: yes" if @xna
     sio.puts "Date: #{@date}"
     sio.puts
@@ -48,7 +48,7 @@ class NntpMsg
     return header
   end
 
-  def yenc_body(current_part,parts,crc32,pcrc32,part_size,file_size,filename)
+  def yenc_body(current_part, parts, crc32, pcrc32, part_size, file_size, filename)
     chunk_start = ((current_part - 1) * part_size) + 1
     chunk_end = current_part * part_size
     if (parts==1)

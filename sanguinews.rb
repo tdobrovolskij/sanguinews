@@ -79,7 +79,7 @@ def form_message(data)
   msg.message = message.force_encoding('ASCII-8BIT')
   msg.yenc_body(chunk, chunks, crc32, pcrc32, length, fsize, basename)
   msg = msg.return_self
-  result = { message: msg, filename: basename, chunk: chunk, length: length }
+  { message: msg, filename: basename, chunk: chunk, length: length }
 end
 
 def connect(x)
@@ -225,7 +225,6 @@ messages.extend(MonitorMixin)
 files_to_process = []
 @s = Speedometer.new("KB")
 @s.uploaded = 0
-uploading = false
 
 pool = Queue.new
 Thread.new {
