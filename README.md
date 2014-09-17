@@ -9,6 +9,11 @@ Use git clone to get the newest version:
 
     git clone https://github.com/tdobrovolskij/sanguinews.git
 
+Because of inline C code, C compiler is needed(GCC or Apple's clang). On Debian-based systems it can be installed by:
+```
+apt-get install build-essential
+```
+
 Some gems are required. Use bundler to resolve dependencies swiftly:
 ```
 gem install bundler
