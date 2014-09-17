@@ -309,7 +309,7 @@ until unprocessed == 0
       response.each do |r|
         msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
       end
-      file.working_nzb.save_segment(length, chunk, msgid)
+      file.nzb.save_segment(length, chunk, msgid)
     end
     pool.push(nntp)
   end
