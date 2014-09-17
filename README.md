@@ -9,6 +9,11 @@ Use git clone to get the newest version:
 
     git clone https://github.com/tdobrovolskij/sanguinews.git
 
+Because of inline C code, C compiler is needed(GCC or Apple's clang). On Debian-based systems it can be installed by:
+```
+apt-get install build-essential
+```
+
 Some gems are required. Use bundler to resolve dependencies swiftly:
 ```
 gem install bundler
@@ -47,6 +52,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.50 - Rewrote big part of the code. New libraries. More stable speed.
 * 0.48 - Got rid of memory leaks.
 * 0.47 - Reusing old connections instead of opening new ones.
 * 0.46 - Upload speed is now displayed.
