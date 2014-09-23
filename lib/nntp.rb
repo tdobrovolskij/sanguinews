@@ -434,7 +434,6 @@ module Net  #:nodoc:
         tried_authenticating = true
       end
 
-      authenticate user, secret, method if user
       @started = true
     ensure
       @socket.close if not @started and @socket and not @socket.closed?
