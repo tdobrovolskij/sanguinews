@@ -7,6 +7,7 @@ GEM
     nzb (0.2.2)
     parseconfig (1.0.4)
     speedometer (0.0.5)
+    vmstat (2.1.0)
 
 PLATFORMS
   ruby
@@ -16,3 +17,4 @@ DEPENDENCIES
   nzb (>= 0.2.2)
   parseconfig
   speedometer (>= 0.0.5)
+  vmstat (= 2.1.0)

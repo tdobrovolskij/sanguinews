@@ -47,12 +47,13 @@ View help:
 CREDITS
 =======
 * nntp library(crudely modified by me) from http://nntp.rubyforge.org/ project.
-* crc32 method from yenc gem by Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend/yenc)
+* [Sam "madgeekfiend" Contapay](https://github.com/madgeekfiend) for inspiration/ideas from his [yEnc](https://github.com/madgeekfiend/yenc) project.
 * thread-pool library from https://gist.github.com/Burgestrand/2040175
 * [john3voltas](https://github.com/john3voltas) for helping with excess authentication bug(fixed in v0.51).
 
 HISTORY
 =======
+* 0.52 - CRC32 calculation won't crash the program on low-end boxes.
 * 0.51 - Won't be trying to log in 2nd time if already authenticated.
 * 0.50 - Rewrote big part of the code. New libraries. More stable speed.
 * 0.48 - Got rid of memory leaks.
