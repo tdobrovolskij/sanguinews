@@ -17,10 +17,13 @@
 ########################################################################
 require 'zlib'
 require 'nzb'
+require 'vmstat'
 
 class FileToUpload < File
   attr_accessor :name, :chunks, :subject
   attr_reader :crc32, :nzb, :dir_prefix, :cname
+
+  @@max_mem = nil
   
   def initialize(var)
     @dir_prefix = ''
@@ -32,6 +35,7 @@ class FileToUpload < File
     @name = File.basename(var[:name])
     chunk_amount(var[:chunk_length])
     common_name(var)
+    max_mem
     if var[:nzb]
       @from = var[:from]
       @groups = var[:groups]
@@ -54,11 +58,18 @@ class FileToUpload < File
     @nzb.save_segment(length, chunk, msgid) if @nzb
   end
 
-  # Method from y_enc gem
-  # Big thanks to Sam "madgeekfiend" Contapay(https://github.com/madgeekfiend)
   def file_crc32
-    f = self.read
-    @crc32 = Zlib.crc32(f, 0).to_s(16)
+    fcrc32 = nil
+    until self.eof?
+      f = self.read(@@max_mem)
+      crc32 = Zlib.crc32(f, 0)
+      if fcrc32.nil?
+        fcrc32 = crc32
+      else
+        fcrc32 = Zlib.crc32_combine(fcrc32, crc32, f.size)
+      end
+    end
+    @crc32 = fcrc32.to_s(16)
     self.rewind
   end
 
@@ -84,4 +95,11 @@ class FileToUpload < File
     @nzb.write_header
   end
 
+  def max_mem
+    if @@max_mem.nil?
+      snapshot = Vmstat::Snapshot.new
+      @@max_mem = (snapshot.memory[:free] * snapshot.memory[:pagesize] * 0.1).floor
+    end
+    @@max_mem
+  end
 end

@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.51'
+@version = '0.52'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -256,6 +256,7 @@ end
 # let's give a little bit higher priority for file processing thread
 @t = Thread.new {
   files_to_process.each do |file|
+    @s.log("Calculating CRC32 value for #{file.name}\n") if @verbose
     file.file_crc32
     @s.log("Encoding #{file.name}\n")
     yencode(file, @length, messages)
