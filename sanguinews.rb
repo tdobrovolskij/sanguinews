@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.52'
+@version = '0.53'
 
 require 'rubygems'
 require 'bundler/setup'
