@@ -221,7 +221,7 @@ messages = Queue.new
 messages.extend(MonitorMixin)
 @cond = messages.new_cond
 files_to_process = []
-@s = Speedometer.new("KB")
+@s = Speedometer.new(units: "KB", progressbar: true)
 @s.uploaded = 0
 
 pool = Queue.new
@@ -244,6 +244,7 @@ files.each do |file|
     prefix: @prefix, current: c, last: max, filemode: filemode,
     from: @from, groups: @groups, nzb: @nzb
   )
+  @s.to_upload += file.size
 
   info_lock.synchronize do
     unprocessed += file.chunks
@@ -303,7 +304,8 @@ until unprocessed == 0
       @s.log("Uploaded chunk Nr:#{chunk}")
     end
 
-    @s.uploaded = @s.uploaded + full_size
+    @s.done(length)
+    @s.uploaded += full_size
     if @nzb
       msgid = ''
       response.each do |r|
