@@ -97,8 +97,8 @@ class FileToUpload < File
 
   def max_mem
     if @@max_mem.nil?
-      snapshot = Vmstat::Snapshot.new
-      @@max_mem = (snapshot.memory[:free] * snapshot.memory[:pagesize] * 0.1).floor
+      memory = Vmstat.memory
+      @@max_mem = (memory[:free] * memory[:pagesize] * 0.1).floor
     end
     @@max_mem
   end
