@@ -6,7 +6,7 @@ GEM
     ZenTest (4.10.1)
     nzb (0.2.2)
     parseconfig (1.0.4)
-    speedometer (0.0.5)
+    speedometer (0.1.0)
     vmstat (2.1.0)
 
 PLATFORMS
@@ -16,5 +16,5 @@ DEPENDENCIES
   RubyInline
   nzb (>= 0.2.2)
   parseconfig
-  speedometer (>= 0.0.5)
+  speedometer (>= 0.1.0)
   vmstat (= 2.1.0)
