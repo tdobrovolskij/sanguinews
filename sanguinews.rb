@@ -295,7 +295,7 @@ until unprocessed == 0
       response = nntp.post msg
     rescue
       #puts $!, $@ if @verbose
-      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccesful. Retrying...") if @verbose
+      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...") if @verbose
       sleep @delay
       retry
     end
