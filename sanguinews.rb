@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.53'
+@version = '0.54'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -122,6 +122,13 @@ def parse_config(config)
   @nzb = true if config['nzb'] == 'yes'
 end
 
+def get_msgid(response)
+  msgid = '' 
+  response.each do |r|
+    msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
+  end
+  return msgid
+end
 
 # Parse options in config file
 config = "~/.sanguinews.conf"
@@ -136,7 +143,7 @@ end
 # version and legal info presented to user
 banner = []
 banner << ""
-banner << "sanguinews v#{@version}. Copyright (c) 2013 Tadeus Dobrovolskij."
+banner << "sanguinews v#{@version}. Copyright (c) 2013-2014 Tadeus Dobrovolskij."
 banner << "Comes with ABSOLUTELY NO WARRANTY. Distributed under GPL v2 license(http://www.gnu.org/licenses/gpl-2.0.txt)."
 banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multithreading and SSL. More info in README."
 banner << ""
@@ -151,6 +158,9 @@ opt_parser = OptionParser.new do |opt|
 
   opt.on("-c", "--config CONFIG", "use different config file") do |cfg|
     options[:config] = cfg
+  end
+  opt.on("-C", "--check", "check headers while uploading; slow but reliable") do
+    options[:head_check] = true
   end
   opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
@@ -190,6 +200,7 @@ end
 parse_config(optconfig) if File.exist?(optconfig)
 
 options[:verbose] ? @verbose = true : @verbose = false
+options[:head_check] ? @head_check = true : @head_check = false
 files << options[:file].to_s if filemode
 
 @username = username unless username.nil?
@@ -288,15 +299,21 @@ until unprocessed == 0
         informed[basename.to_sym] = true
       end
     end
-    response = ''
 
     @s.start
+    x = 1
     begin
       response = nntp.post msg
+      msgid = get_msgid(response)
+      if @head_check
+        sleep x
+        nntp.stat("<#{msgid}>")
+      end
     rescue
       #puts $!, $@ if @verbose
       @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...") if @verbose
       sleep @delay
+      x += 1
       retry
     end
 
@@ -307,10 +324,6 @@ until unprocessed == 0
     @s.done(length)
     @s.uploaded += full_size
     if @nzb
-      msgid = ''
-      response.each do |r|
-        msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
-      end
       file.write_segment_info(length, chunk, msgid)
     end
     pool.push(nntp)
