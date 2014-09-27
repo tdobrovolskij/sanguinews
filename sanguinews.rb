@@ -86,7 +86,7 @@ def connect(x)
     nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
   rescue
     #puts $!, $@ if @verbose
-    @s.log("Connection nr. #{x} has failed. Reconnecting...") if @verbose
+    @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true) if @verbose
     sleep @delay
     retry
   end
@@ -280,7 +280,7 @@ end
 # let's give a little bit higher priority for file processing thread
 @t = Thread.new {
   files_to_process.each do |file|
-    @s.log("Calculating CRC32 value for #{file.name}\n") if @verbose
+    @s.log("Calculating CRC32 value for #{file.name}\n", stderr: true) if @verbose
     file.file_crc32
     @s.log("Encoding #{file.name}\n")
     yencode(file, @length, messages)
@@ -306,8 +306,8 @@ until unprocessed == 0
     info_lock.synchronize do
       if !informed[basename.to_sym]
         @s.log("Uploading #{basename}\n")
-        @s.log(file.subject)
-        @s.log("Chunks: #{file.chunks}") if @verbose
+        @s.log(file.subject + "\n")
+        @s.log("Chunks: #{file.chunks}\n", stderr: true) if @verbose
         informed[basename.to_sym] = true
       end
     end
@@ -323,14 +323,14 @@ until unprocessed == 0
       end
     rescue
       #puts $!, $@ if @verbose
-      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...") if @verbose
+      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true) if @verbose
       sleep @delay
       x += 4
       retry
     end
 
     if @verbose
-      @s.log("Uploaded chunk Nr:#{chunk}")
+      @s.log("Uploaded chunk Nr:#{chunk}\n", stderr: true)
     end
 
     @s.done(length)
