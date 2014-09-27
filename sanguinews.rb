@@ -185,7 +185,12 @@ opt_parser = OptionParser.new do |opt|
   end
 end
 
-opt_parser.parse!
+begin
+  opt_parser.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument
+  puts opt_parser
+  exit 1
+end
 
 files = []
 password = options[:password]
@@ -211,6 +216,13 @@ if !ARGV.empty? && filemode
   ARGV.each do |file|
     files << file.to_s
   end
+end
+
+# exit when no file list is provided
+if directory.nil? && files.empty?
+  puts "You need to specify something to upload!"
+  puts opt_parser
+  exit 1
 end
 
 # skip hidden files
