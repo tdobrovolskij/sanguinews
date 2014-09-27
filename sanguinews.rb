@@ -325,7 +325,7 @@ until unprocessed == 0
       #puts $!, $@ if @verbose
       @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...") if @verbose
       sleep @delay
-      x += 1
+      x += 4
       retry
     end
 
