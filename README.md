@@ -53,6 +53,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.54 - Header checking.
 * 0.53 - Added progress bar for uploads.
 * 0.52 - CRC32 calculation won't crash the program on low-end boxes.
 * 0.51 - Won't be trying to log in 2nd time if already authenticated.

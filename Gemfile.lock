@@ -6,7 +6,7 @@ GEM
     ZenTest (4.10.1)
     nzb (0.2.2)
     parseconfig (1.0.4)
-    speedometer (0.1.0)
+    speedometer (0.1.1)
     vmstat (2.1.0)
 
 PLATFORMS
