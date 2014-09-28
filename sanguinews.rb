@@ -131,6 +131,79 @@ def print_debug
   @s.log($@, stderr: true)
 end
 
+def parse_options(args)
+  # version and legal info presented to user
+  banner = []
+  banner << ""
+  banner << "sanguinews v#{@version}. Copyright (c) 2013-2014 Tadeus Dobrovolskij."
+  banner << "Comes with ABSOLUTELY NO WARRANTY. Distributed under GPL v2 license(http://www.gnu.org/licenses/gpl-2.0.txt)."
+  banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multithreading and SSL. More info in README."
+  banner << ""
+  # option parser
+  options = {}
+  options[:filemode] = false
+  options[:files] = []
+
+  opt_parser = OptionParser.new do |opt|
+    opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY] | -f FILE1..[FILEX]"
+    opt.separator  ""
+    opt.separator  "Options"
+
+    opt.on("-c", "--config CONFIG", "use different config file") do |cfg|
+      options[:config] = cfg
+    end
+    opt.on("-C", "--check", "check headers while uploading; slow but reliable") do
+      options[:header_check] = true
+    end
+    opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
+      options[:filemode] = true
+      options[:files] << file
+    end
+    opt.on("-h", "--help", "help") do
+      banner.each do |msg|
+        puts msg
+      end
+      puts opt_parser
+      puts
+      exit
+    end
+    opt.on("-p", "--password PASSWORD", "use PASSWORD as your password(overwrites config file)") do |password|
+      options[:password] = password
+    end
+    opt.on("-u", "--user USERNAME", "use USERNAME as your username(overwrites config file)") do |username|
+      options[:username] = username
+    end
+    opt.on("-v", "--verbose", "be verbose?") do
+      options[:verbose] = true
+    end
+  end
+
+  begin
+    opt_parser.parse!(args)
+  rescue OptionParser::InvalidOption, OptionParser::MissingArgument
+    puts opt_parser
+    exit 1
+  end
+
+  options[:directory] = args[0] unless options[:filemode]
+
+  # in file mode treat every additional parameter as a file
+  if !args.empty? && options[:filemode]
+    args.each do |file|
+      options[:files] << file.to_s
+    end
+  end
+
+  # exit when no file list is provided
+  if options[:directory].nil? && options[:files].empty?
+    puts "You need to specify something to upload!"
+    puts opt_parser
+    exit 1
+  end
+
+  return options
+end
+
 # Parse options in config file
 config = "~/.sanguinews.conf"
 config = File.expand_path(config)
@@ -141,59 +214,7 @@ if File.exist?(config)
   parse_config(config)
 end
 
-# version and legal info presented to user
-banner = []
-banner << ""
-banner << "sanguinews v#{@version}. Copyright (c) 2013-2014 Tadeus Dobrovolskij."
-banner << "Comes with ABSOLUTELY NO WARRANTY. Distributed under GPL v2 license(http://www.gnu.org/licenses/gpl-2.0.txt)."
-banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multithreading and SSL. More info in README."
-banner << ""
-# option parser
-options = {}
-filemode = false
-
-opt_parser = OptionParser.new do |opt|
-  opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY] | -f FILE1..[FILEX]"
-  opt.separator  ""
-  opt.separator  "Options"
-
-  opt.on("-c", "--config CONFIG", "use different config file") do |cfg|
-    options[:config] = cfg
-  end
-  opt.on("-C", "--check", "check headers while uploading; slow but reliable") do
-    options[:header_check] = true
-  end
-  opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
-    options[:file] = file
-    filemode = true
-  end
-  opt.on("-h", "--help", "help") do
-    banner.each do |msg|
-      puts msg
-    end
-    puts opt_parser
-    puts
-    exit
-  end
-  opt.on("-p", "--password PASSWORD", "use PASSWORD as your password(overwrites config file)") do |password|
-    options[:password] = password
-  end
-  opt.on("-u", "--user USERNAME", "use USERNAME as your username(overwrites config file)") do |username|
-    options[:username] = username
-  end
-  opt.on("-v", "--verbose", "be verbose?") do
-    options[:verbose] = true
-  end
-end
-
-begin
-  opt_parser.parse!
-rescue OptionParser::InvalidOption, OptionParser::MissingArgument
-  puts opt_parser
-  exit 1
-end
-
-files = []
+options = parse_options(ARGV)
 
 optconfig = options[:config]
 optconfig = '' if optconfig.nil?
@@ -205,24 +226,12 @@ parse_config(optconfig) if File.exist?(optconfig)
 
 options[:verbose] ? @verbose = true : @verbose = false
 @header_check = true unless options[:header_check].nil?
-files << options[:file].to_s if filemode
+filemode = options[:filemode]
 
 @username = options[:username] unless options[:username].nil?
 @password = options[:password] unless options[:password].nil?
-directory = ARGV[0] unless filemode
-# in file mode treat every additional parameter as a file
-if !ARGV.empty? && filemode
-  ARGV.each do |file|
-    files << file.to_s
-  end
-end
-
-# exit when no file list is provided
-if directory.nil? && files.empty?
-  puts "You need to specify something to upload!"
-  puts opt_parser
-  exit 1
-end
+directory = options[:directory] unless filemode
+files = options[:files]
 
 # skip hidden files
 if !filemode
