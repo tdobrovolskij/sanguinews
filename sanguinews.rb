@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.55'
+@version = '0.56'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -114,6 +114,7 @@ def parse_config(config)
   end
   config['xna'] == 'yes' ? @xna = true : @xna = false
   config['nzb'] == 'yes' ? @nzb = true : @nzb = false
+  config['header_check'] == 'yes' ? @header_check = true : @header_check = false
   config['debug'] == 'yes' ? @debug = true : @debug = false
 end
 
@@ -160,7 +161,7 @@ opt_parser = OptionParser.new do |opt|
     options[:config] = cfg
   end
   opt.on("-C", "--check", "check headers while uploading; slow but reliable") do
-    options[:head_check] = true
+    options[:header_check] = true
   end
   opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
     options[:file] = file
@@ -193,8 +194,6 @@ rescue OptionParser::InvalidOption, OptionParser::MissingArgument
 end
 
 files = []
-password = options[:password]
-username = options[:username]
 
 optconfig = options[:config]
 optconfig = '' if optconfig.nil?
@@ -205,11 +204,11 @@ end
 parse_config(optconfig) if File.exist?(optconfig)
 
 options[:verbose] ? @verbose = true : @verbose = false
-options[:head_check] ? @head_check = true : @head_check = false
+@header_check = true unless options[:header_check].nil?
 files << options[:file].to_s if filemode
 
-@username = username unless username.nil?
-@password = password unless password.nil?
+@username = options[:username] unless options[:username].nil?
+@password = options[:password] unless options[:password].nil?
 directory = ARGV[0] unless filemode
 # in file mode treat every additional parameter as a file
 if !ARGV.empty? && filemode
@@ -317,7 +316,7 @@ until unprocessed == 0
     begin
       response = nntp.post msg
       msgid = get_msgid(response)
-      if @head_check
+      if @header_check
         sleep x
         nntp.stat("<#{msgid}>")
       end

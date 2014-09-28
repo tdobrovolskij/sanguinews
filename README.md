@@ -53,6 +53,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.56 - Debug and header checking options in config.
 * 0.55 - Better logging.
 * 0.54 - Header checking.
 * 0.53 - Added progress bar for uploads.
