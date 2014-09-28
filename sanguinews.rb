@@ -85,7 +85,7 @@ def connect(x)
   begin
     nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
   rescue
-    #puts $!, $@ if @verbose
+    print_debug if @debug
     @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true) if @verbose
     sleep @delay
     retry
@@ -112,14 +112,9 @@ def parse_config(config)
   else
     @mode = :original
   end
-  xna = config['xna']
-  if xna == 'yes'
-    @xna = true
-  else
-    @xna = false
-  end
-  @nzb = false
-  @nzb = true if config['nzb'] == 'yes'
+  config['xna'] == 'yes' ? @xna = true : @xna = false
+  config['nzb'] == 'yes' ? @nzb = true : @nzb = false
+  config['debug'] == 'yes' ? @debug = true : @debug = false
 end
 
 def get_msgid(response)
@@ -128,6 +123,11 @@ def get_msgid(response)
     msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
   end
   return msgid
+end
+
+def print_debug
+  @s.log($!, stderr: true)
+  @s.log($@, stderr: true)
 end
 
 # Parse options in config file
@@ -322,7 +322,7 @@ until unprocessed == 0
         nntp.stat("<#{msgid}>")
       end
     rescue
-      #puts $!, $@ if @verbose
+      print_debug if @debug
       @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true) if @verbose
       sleep @delay
       x += 4
