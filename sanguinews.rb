@@ -87,7 +87,7 @@ def connect(x)
   rescue
     print_debug if @debug
     if @verbose
-      parse_error($!)
+      parse_error($!.to_s)
       @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true)
     end
     sleep @delay
@@ -212,25 +212,25 @@ end
 
 def parse_error(msg)
   case
-  when msg == /\A411/
+  when /\A411/ === msg
     @s.log("Invalid newsgroup specified.", stderr: true)
-  when msg == /\A430/
+  when /\A430/ === msg
     @s.log("No such article. Maybe server is lagging...", stderr: true)
-  when msg == /\A437/
+  when /\A437/ === msg
     @s.log("Article rejected by server. Maybe it's too big.", stderr: true)
-  when msg == /\A440/
+  when /\A440/ === msg
     @s.log("Posting not allowed.", stderr: true)
-  when msg == /\A441/
+  when /\A441/ === msg
     @s.log("Posting failed for some reason.", stderr: true)
-  when msg == /\A450/
+  when /\A450/ === msg
     @s.log("Not authorized.", stderr: true)
-  when msg == /\A452/
+  when /\A452/ === msg
     @s.log("Wrong username and/or password.", stderr: true)
-  when msg == /\A500/
+  when /\A500/ === msg
     @s.log("Command not recognized.", stderr: true)
-  when msg == /\A501/
+  when /\A501/ === msg
     @s.log("Command syntax error.", stderr: true)
-  when msg == /\A502/
+  when /\A502/ === msg
     @s.log("Access denied.", stderr: true)
   end
 end
@@ -364,7 +364,7 @@ until unprocessed == 0
     rescue
       print_debug if @debug
       if @verbose
-        parse_error($!)
+        parse_error($!.to_s)
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
       end
       sleep @delay
