@@ -86,7 +86,10 @@ def connect(x)
     nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
   rescue
     print_debug if @debug
-    @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true) if @verbose
+    if @verbose
+      parse_error($!)
+      @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true)
+    end
     sleep @delay
     retry
   end
@@ -205,6 +208,31 @@ def parse_options(args)
   end
 
   return options
+end
+
+def parse_error(msg)
+  case
+  when msg == /\A411/
+    @s.log("Invalid newsgroup specified.", stderr: true)
+  when msg == /\A430/
+    @s.log("No such article. Maybe server is lagging...", stderr: true)
+  when msg == /\A437/
+    @s.log("Article rejected by server. Maybe it's too big.", stderr: true)
+  when msg == /\A440/
+    @s.log("Posting not allowed.", stderr: true)
+  when msg == /\A441/
+    @s.log("Posting failed for some reason.", stderr: true)
+  when msg == /\A450/
+    @s.log("Not authorized.", stderr: true)
+  when msg == /\A452/
+    @s.log("Wrong username and/or password.", stderr: true)
+  when msg == /\A500/
+    @s.log("Command not recognized.", stderr: true)
+  when msg == /\A501/
+    @s.log("Command syntax error.", stderr: true)
+  when msg == /\A502/
+    @s.log("Access denied.", stderr: true)
+  end
 end
 
 # Parse options in config file
@@ -335,7 +363,10 @@ until unprocessed == 0
       end
     rescue
       print_debug if @debug
-      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true) if @verbose
+      if @verbose
+        parse_error($!)
+        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
+      end
       sleep @delay
       x += 4
       retry
