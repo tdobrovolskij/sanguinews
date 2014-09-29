@@ -216,7 +216,7 @@ def parse_error(msg)
     @s.log("Invalid newsgroup specified.", stderr: true)
   when /\A430/ === msg
     @s.log("No such article. Maybe server is lagging...", stderr: true)
-  when /\A437/ === msg
+  when /\A(4\d{2}\s)?437/ === msg
     @s.log("Article rejected by server. Maybe it's too big.", stderr: true)
   when /\A440/ === msg
     @s.log("Posting not allowed.", stderr: true)
