@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.56'
+@version = '0.56.1'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -159,6 +159,9 @@ def parse_options(args)
       options[:filemode] = true
       options[:files] << file
     end
+    opt.on("-g", "--groups GROUP_LIST", "use these groups(comma separated) for upload") do |group_list|
+      options[:groups] = group_list
+    end
     opt.on("-h", "--help", "help") do
       banner.each do |msg|
         puts msg
@@ -230,6 +233,7 @@ filemode = options[:filemode]
 
 @username = options[:username] unless options[:username].nil?
 @password = options[:password] unless options[:password].nil?
+@groups = options[:groups] unless options[:groups].nil?
 directory = options[:directory] unless filemode
 files = options[:files]
 
