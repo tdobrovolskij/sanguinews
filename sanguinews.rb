@@ -210,18 +210,24 @@ def parse_options(args)
   return options
 end
 
-def parse_error(msg)
+def parse_error(msg, **info)
+  if info[:file].nil? || info[:chunk].nil?
+    fileinfo = ''
+  else
+    fileinfo = '(' + info[:file] + ' / Chunk: ' + info[:chunk].to_s + ')'
+  end
+
   case
   when /\A411/ === msg
     @s.log("Invalid newsgroup specified.", stderr: true)
   when /\A430/ === msg
-    @s.log("No such article. Maybe server is lagging...", stderr: true)
+    @s.log("No such article. Maybe server is lagging...#{fileinfo}", stderr: true)
   when /\A(4\d{2}\s)?437/ === msg
-    @s.log("Article rejected by server. Maybe it's too big.", stderr: true)
+    @s.log("Article rejected by server. Maybe it's too big.#{fileinfo}", stderr: true)
   when /\A440/ === msg
     @s.log("Posting not allowed.", stderr: true)
   when /\A441/ === msg
-    @s.log("Posting failed for some reason.", stderr: true)
+    @s.log("Posting failed for some reason.#{fileinfo}", stderr: true)
   when /\A450/ === msg
     @s.log("Not authorized.", stderr: true)
   when /\A452/ === msg
@@ -364,7 +370,7 @@ until unprocessed == 0
     rescue
       print_debug if @debug
       if @verbose
-        parse_error($!.to_s)
+        parse_error($!.to_s, file: basename, chunk: chunk)
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
       end
       sleep @delay
