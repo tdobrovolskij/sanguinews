@@ -17,7 +17,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
 
-@version = '0.56.1'
+@version = '0.57'
 
 require 'rubygems'
 require 'bundler/setup'
@@ -85,8 +85,11 @@ def connect(x)
   begin
     nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
   rescue
-    print_debug if @debug
-    @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true) if @verbose
+    @s.log([$!, $@], stderr: true) if @debug
+    if @verbose
+      parse_error($!.to_s)
+      @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true)
+    end
     sleep @delay
     retry
   end
@@ -124,11 +127,6 @@ def get_msgid(response)
     msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
   end
   return msgid
-end
-
-def print_debug
-  @s.log($!, stderr: true)
-  @s.log($@, stderr: true)
 end
 
 def parse_options(args)
@@ -205,6 +203,37 @@ def parse_options(args)
   end
 
   return options
+end
+
+def parse_error(msg, **info)
+  if info[:file].nil? || info[:chunk].nil?
+    fileinfo = ''
+  else
+    fileinfo = '(' + info[:file] + ' / Chunk: ' + info[:chunk].to_s + ')'
+  end
+
+  case
+  when /\A411/ === msg
+    @s.log("Invalid newsgroup specified.", stderr: true)
+  when /\A430/ === msg
+    @s.log("No such article. Maybe server is lagging...#{fileinfo}", stderr: true)
+  when /\A(4\d{2}\s)?437/ === msg
+    @s.log("Article rejected by server. Maybe it's too big.#{fileinfo}", stderr: true)
+  when /\A440/ === msg
+    @s.log("Posting not allowed.", stderr: true)
+  when /\A441/ === msg
+    @s.log("Posting failed for some reason.#{fileinfo}", stderr: true)
+  when /\A450/ === msg
+    @s.log("Not authorized.", stderr: true)
+  when /\A452/ === msg
+    @s.log("Wrong username and/or password.", stderr: true)
+  when /\A500/ === msg
+    @s.log("Command not recognized.", stderr: true)
+  when /\A501/ === msg
+    @s.log("Command syntax error.", stderr: true)
+  when /\A502/ === msg
+    @s.log("Access denied.", stderr: true)
+  end
 end
 
 # Parse options in config file
@@ -334,8 +363,11 @@ until unprocessed == 0
         nntp.stat("<#{msgid}>")
       end
     rescue
-      print_debug if @debug
-      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true) if @verbose
+      @s.log([$!, $@], stderr: true) if @debug
+      if @verbose
+        parse_error($!.to_s, file: basename, chunk: chunk)
+        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
+      end
       sleep @delay
       x += 4
       retry

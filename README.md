@@ -53,6 +53,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.57 - More user friendly error messages. No need for debug mode for regular user.
 * 0.56 - Debug and header checking options in config.
 * 0.55 - Better logging.
 * 0.54 - Header checking.
