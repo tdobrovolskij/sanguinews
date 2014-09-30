@@ -85,7 +85,7 @@ def connect(x)
   begin
     nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
   rescue
-    print_debug if @debug
+    @s.log([$!, $@], stderr: true) if @debug
     if @verbose
       parse_error($!.to_s)
       @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true)
@@ -127,11 +127,6 @@ def get_msgid(response)
     msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
   end
   return msgid
-end
-
-def print_debug
-  @s.log($!, stderr: true)
-  @s.log($@, stderr: true)
 end
 
 def parse_options(args)
@@ -368,7 +363,7 @@ until unprocessed == 0
         nntp.stat("<#{msgid}>")
       end
     rescue
-      print_debug if @debug
+      @s.log([$!, $@], stderr: true) if @debug
       if @verbose
         parse_error($!.to_s, file: basename, chunk: chunk)
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
