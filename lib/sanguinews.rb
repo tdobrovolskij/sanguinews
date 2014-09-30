@@ -28,11 +28,12 @@ require 'tempfile'
 # Following non-standard gems are needed
 require 'parseconfig'
 require 'speedometer'
-require_relative 'lib/thread-pool'
-require_relative 'lib/nntp'
-require_relative 'lib/nntp_msg'
-require_relative 'lib/file_to_upload'
-require_relative 'lib/yencoded'
+# Our library
+require 'thread-pool'
+require 'nntp'
+require 'nntp_msg'
+require 'file_to_upload'
+require 'yencoded'
 
 # Method returns yenc encoded string and crc32 value
 def yencode(file, length, queue)
@@ -48,7 +49,7 @@ def yencode(file, length, queue)
       data = {}
       final_data = []
       len = bindata.length
-      data[:yenc] = Yencoded.new.yenc(bindata, len)
+      data[:yenc] = Yencoded::Data.yenc(bindata, len)
       data[:crc32] = Zlib.crc32(bindata, 0).to_s(16)
       data[:length] = len
       data[:chunk] = i
