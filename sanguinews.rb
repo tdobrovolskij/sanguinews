@@ -386,7 +386,7 @@ end
 
 until unprocessed == 0
   p.schedule do
-    process_and_upload(messages, nntp, info_lock, informed)
+    process_and_upload(messages, pool, info_lock, informed)
   end
   unprocessed -= 1
 end
