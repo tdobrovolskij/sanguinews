@@ -59,18 +59,20 @@ class FileToUpload < File
   end
 
   def file_crc32
-    fcrc32 = nil
-    until self.eof?
-      f = self.read(@@max_mem)
-      crc32 = Zlib.crc32(f, 0)
-      if fcrc32.nil?
-        fcrc32 = crc32
-      else
-        fcrc32 = Zlib.crc32_combine(fcrc32, crc32, f.size)
+    @crc32 ||= begin
+      fcrc32 = nil
+      until self.eof?
+        f = self.read(@@max_mem)
+        crc32 = Zlib.crc32(f, 0)
+        if fcrc32.nil?
+          fcrc32 = crc32
+        else
+          fcrc32 = Zlib.crc32_combine(fcrc32, crc32, f.size)
+        end
       end
+      self.rewind
+      fcrc32.to_s(16)
     end
-    @crc32 = fcrc32.to_s(16)
-    self.rewind
   end
 
   private
