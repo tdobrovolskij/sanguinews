@@ -236,6 +236,61 @@ def parse_error(msg, **info)
   end
 end
 
+def process_and_upload(queue, nntp_pool, info_lock, informed)
+  stuff = queue.pop
+  queue.synchronize do
+    @cond.signal
+  end
+  nntp = nntp_pool.pop
+
+  data = stuff[0]
+  file = stuff[1]
+  msg = data[:message]
+  chunk = data[:chunk]
+  basename = data[:filename]
+  length = data[:length]
+  full_size = msg.length
+  info_lock.synchronize do
+    if !informed[basename.to_sym]
+      @s.log("Uploading #{basename}\n")
+      @s.log(file.subject + "\n")
+      @s.log("Chunks: #{file.chunks}\n", stderr: true) if @verbose
+      informed[basename.to_sym] = true
+    end
+  end
+
+  @s.start
+  x = 1
+  begin
+    response = nntp.post msg
+    msgid = get_msgid(response)
+    if @header_check
+      sleep x
+      nntp.stat("<#{msgid}>")
+    end
+  rescue
+    @s.log([$!, $@], stderr: true) if @debug
+    if @verbose
+      parse_error($!.to_s, file: basename, chunk: chunk)
+      @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
+    end
+    sleep @delay
+    x += 4
+    retry
+  end
+
+  if @verbose
+    @s.log("Uploaded chunk Nr:#{chunk}\n", stderr: true)
+  end
+
+  @s.done(length)
+  @s.uploaded += full_size
+  if @nzb
+    file.write_segment_info(length, chunk, msgid)
+  end
+  nntp_pool.push(nntp)
+end
+
 # Parse options in config file
 config = "~/.sanguinews.conf"
 config = File.expand_path(config)
@@ -331,58 +386,7 @@ end
 
 until unprocessed == 0
   p.schedule do
-    stuff = messages.pop
-    messages.synchronize do
-      @cond.signal
-    end
-    nntp = pool.pop
-
-    data = stuff[0]
-    file = stuff[1]
-    msg = data[:message] 
-    chunk = data[:chunk]
-    basename = data[:filename]
-    length = data[:length]
-    full_size = msg.length
-    info_lock.synchronize do
-      if !informed[basename.to_sym]
-        @s.log("Uploading #{basename}\n")
-        @s.log(file.subject + "\n")
-        @s.log("Chunks: #{file.chunks}\n", stderr: true) if @verbose
-        informed[basename.to_sym] = true
-      end
-    end
-
-    @s.start
-    x = 1
-    begin
-      response = nntp.post msg
-      msgid = get_msgid(response)
-      if @header_check
-        sleep x
-        nntp.stat("<#{msgid}>")
-      end
-    rescue
-      @s.log([$!, $@], stderr: true) if @debug
-      if @verbose
-        parse_error($!.to_s, file: basename, chunk: chunk)
-        @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
-      end
-      sleep @delay
-      x += 4
-      retry
-    end
-
-    if @verbose
-      @s.log("Uploaded chunk Nr:#{chunk}\n", stderr: true)
-    end
-
-    @s.done(length)
-    @s.uploaded += full_size
-    if @nzb
-      file.write_segment_info(length, chunk, msgid)
-    end
-    pool.push(nntp)
+    process_and_upload(messages, nntp, info_lock, informed)
   end
   unprocessed -= 1
 end
