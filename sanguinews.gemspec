@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency "rake"
   s.add_runtime_dependency "rake-compiler"
 
-  s.extensions << "ext/extconf.rb"
+  s.extensions << "ext/yencoded/extconf.rb"
 
   s.files         = `git ls-files`.split("\n")
   s.executables	  = 'sanguinews'
