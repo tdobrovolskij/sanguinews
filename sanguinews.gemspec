@@ -14,12 +14,12 @@ Gem::Specification.new do |s|
   s.description = %q{Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler. Supports multithreading and SSL.}
   s.required_ruby_version = ">= 2.0"
 
-  s.add_runtime_dependency "speedometer", ">= 0.1.2"
-  s.add_runtime_dependency "nzb", ">= 0.2.2"
-  s.add_runtime_dependency "vmstat", ">= 2.1.0"
-  s.add_runtime_dependency "parseconfig"
-  s.add_runtime_dependency "rake"
-  s.add_runtime_dependency "rake-compiler"
+  s.add_runtime_dependency "speedometer", '~> 0.1', '>= 0.1.2'
+  s.add_runtime_dependency "nzb", "~> 0.2", '>= 0.2.2'
+  s.add_runtime_dependency "vmstat", "~> 2.1"
+  s.add_runtime_dependency "parseconfig", "~> 1.0"
+  s.add_runtime_dependency "rake", "~> 10.3"
+  s.add_runtime_dependency "rake-compiler", "~> 0.9"
 
   s.extensions << "ext/yencoded/extconf.rb"
 
