@@ -1,3 +1,3 @@
 require 'mkmf'
 extension_name = 'yencoded'
-create_makefile(extension_name)
+create_makefile('sanguinews/' + extension_name)
