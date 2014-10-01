@@ -1,29 +1,21 @@
 sanguinews
 ==========
 
-Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler(https://github.com/madcowfred/newsmangler). Sanguinews is written almost entirely in ruby(almost, because in version 0.45 I have switched from pure ruby yEnc class to inline C code). Supports multithreading and SSL.
+Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by [newsmangler](https://github.com/madcowfred/newsmangler). Sanguinews is written in ruby(yenc encoding is done in C). Supports multithreading and SSL.
 
 INSTALLATION
 ============
-Use git clone to get the newest version:
+Because of some C code, C compiler is needed(GCC or Apple's clang). On Debian-based systems it can be installed by:
 
-    git clone https://github.com/tdobrovolskij/sanguinews.git
+    apt-get install build-essential
 
-Because of inline C code, C compiler is needed(GCC or Apple's clang). On Debian-based systems it can be installed by:
-```
-apt-get install build-essential
-```
+Debian systems need also additional ruby development headers:
 
-Some gems are required. Use bundler to resolve dependencies swiftly:
-```
-gem install bundler
-bundle install
-```
-"bundle install" will check if all dependencies are satisfied and install all the needed gems.
+    apt-get install ruby-dev
 
-Update process is pretty much straightforward:
+Now you can simply install `sanguinews` as a gem:
 
-    cd sanguinews && git pull
+    gem install sanguinews
 
 How to use
 ==========
@@ -34,25 +26,26 @@ Copy and rename sample.conf to your home directory:
 Adjust it with you favourite text editor. I hope that no explanation will be needed.
 To upload a file:
 
-    ./sanguinews.rb -f file_to_upload
+    sanguinews -f file_to_upload
 
 To upload a directory:
 
-    ./sanguinews.rb /path/to/directory
+    sanguinews /path/to/directory
 
 View help:
 
-    ./sanguinews.rb --help
+    sanguinews --help
 
 CREDITS
 =======
 * nntp library(crudely modified by me) from http://nntp.rubyforge.org/ project.
 * [Sam "madgeekfiend" Contapay](https://github.com/madgeekfiend) for inspiration/ideas from his [yEnc](https://github.com/madgeekfiend/yenc) project.
-* thread-pool library from https://gist.github.com/Burgestrand/2040175
-* [john3voltas](https://github.com/john3voltas) for helping with excess authentication bug(fixed in v0.51).
+* [Kim Burgestrand](https://github.com/Burgestrand) for his [thread-pool library](https://gist.github.com/Burgestrand/2040175).
+* [john3voltas](https://github.com/john3voltas) for helping with excess authentication bug(fixed in v0.51) and some proofreading.
 
 HISTORY
 =======
+* 0.60 - Complete refactoring. Sanguinews is distributed as a gem now.
 * 0.57 - More user friendly error messages. No need for debug mode for regular user.
 * 0.56 - Debug and header checking options in config.
 * 0.55 - Better logging.
