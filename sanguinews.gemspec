@@ -18,8 +18,9 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency "nzb", "~> 0.2", '>= 0.2.2'
   s.add_runtime_dependency "vmstat", "~> 2.1"
   s.add_runtime_dependency "parseconfig", "~> 1.0"
-  s.add_runtime_dependency "rake", "~> 10.3"
-  s.add_runtime_dependency "rake-compiler", "~> 0.9"
+
+  s.add_development_dependency "rake", "~> 10.3"
+  s.add_development_dependency "rake-compiler", "~> 0.9"
 
   s.extensions << "ext/yencoded/extconf.rb"
 
