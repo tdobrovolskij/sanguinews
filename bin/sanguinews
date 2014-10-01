@@ -1,3 +1,4 @@
 #!/usr/bin/env ruby
+require 'sanguinews'
 
-sanguinews.rb
+Sanguinews::Main.run!(*ARGV)
