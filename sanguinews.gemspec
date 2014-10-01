@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
 
   s.extensions << "ext/yencoded/extconf.rb"
 
-  s.files         = `git ls-files`.split("\n")
+  s.files          = Dir.glob("ext/**/*.{c,rb,h}") +
+            Dir.glob("lib/**/*.rb")
   s.executables	  = 'sanguinews'
-  s.require_paths = ["lib"]
 end
