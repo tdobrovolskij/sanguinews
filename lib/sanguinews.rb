@@ -82,14 +82,14 @@ module Sanguinews
     { message: msg, filename: basename, chunk: chunk, length: length }
   end
 
-  def connect(x)
+  def connect(conn_nr)
     begin
       nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
     rescue
       @s.log([$!, $@], stderr: true) if @debug
       if @verbose
         parse_error($!.to_s)
-        @s.log("Connection nr. #{x} has failed. Reconnecting...\n", stderr: true)
+        @s.log("Connection nr. #{conn_nr} has failed. Reconnecting...\n", stderr: true)
       end
       sleep @delay
       retry
@@ -201,7 +201,7 @@ module Sanguinews
     end
 
     # exit when no file list is provided
-    if options[:directory].nil? && options[:files].empty?
+    if !options[:directory] && options[:files].empty?
       puts "You need to specify something to upload!"
       puts opt_parser
       exit 1
@@ -211,10 +211,10 @@ module Sanguinews
   end
 
   def parse_error(msg, **info)
-    if info[:file].nil? || info[:chunk].nil?
-      fileinfo = ''
-    else
+    if info[:file] && info[:chunk]
       fileinfo = '(' + info[:file] + ' / Chunk: ' + info[:chunk].to_s + ')'
+    else
+      fileinfo = ''
     end
 
     case
@@ -265,12 +265,12 @@ module Sanguinews
     end
 
     @s.start
-    x = 1
+    check_delay = 1
     begin
       response = nntp.post msg
       msgid = get_msgid(response)
       if @header_check
-        sleep x
+        sleep check_delay
         nntp.stat("<#{msgid}>")
       end
     rescue
@@ -280,7 +280,7 @@ module Sanguinews
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
       end
       sleep @delay
-      x += 4
+      check_delay += 4
       retry
     end
 
@@ -310,7 +310,7 @@ module Sanguinews
     options = parse_options(ARGV)
 
     optconfig = options[:config]
-    optconfig = '' if optconfig.nil?
+    optconfig ||= ''
     if !File.exist?(optconfig) && !saw_config
       puts "No config information specified. Aborting..."
       exit
@@ -318,12 +318,12 @@ module Sanguinews
     parse_config(optconfig) if File.exist?(optconfig)
 
     options[:verbose] ? @verbose = true : @verbose = false
-    @header_check = true unless options[:header_check].nil?
+    @header_check = true if options[:header_check]
     filemode = options[:filemode]
 
-    @username = options[:username] unless options[:username].nil?
-    @password = options[:password] unless options[:password].nil?
-    @groups = options[:groups] unless options[:groups].nil?
+    @username = options[:username] if options[:username]
+    @password = options[:password] if options[:password]
+    @groups = options[:groups] if options[:groups]
     directory = options[:directory] unless filemode
     files = options[:files]
 
