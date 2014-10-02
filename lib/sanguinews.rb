@@ -37,7 +37,7 @@ module Sanguinews
   module_function
   # Method returns yenc encoded string and crc32 value
   def yencode(file, length, queue)
-     i = 1
+     chunk = 1
      until file.eof?
         bindata = file.read(length)
         # We can't take all memory, so we wait
@@ -52,12 +52,12 @@ module Sanguinews
         data[:yenc] = Yencoded::Data.yenc(bindata, len)
         data[:crc32] = Zlib.crc32(bindata, 0).to_s(16)
         data[:length] = len
-        data[:chunk] = i
+        data[:chunk] = chunk
         data[:file] = file
         final_data[0] = form_message(data)
         final_data[1] = file
         queue.push(final_data)
-        i += 1
+        chunk += 1
      end
   end
 
@@ -122,10 +122,10 @@ module Sanguinews
     config['debug'] == 'yes' ? @debug = true : @debug = false
   end
 
-  def get_msgid(response)
+  def get_msgid(responses)
     msgid = ''
-    response.each do |r|
-      msgid = r.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
+    responses.each do |response|
+      msgid = response.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
     end
     return msgid
   end
@@ -351,8 +351,8 @@ module Sanguinews
 
     pool = Queue.new
     Thread.new {
-      @threads.times do |x|
-        nntp = connect(x)
+      @threads.times do |conn_nr|
+        nntp = connect(conn_nr)
         pool.push(nntp)
       end
     }
