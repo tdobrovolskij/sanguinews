@@ -1,9 +1,6 @@
 sanguinews
 ==========
-[![Gem Version](https://badge.fury.io/rb/nzb.svg)](http://badge.fury.io/rb/nzb)
-[![Gem Version](https://badge.fury.io/rb/parseconfig.svg)](http://badge.fury.io/rb/parseconfig)
-[![Gem Version](https://badge.fury.io/rb/speedometer.svg)](http://badge.fury.io/rb/speedometer)
-[![Gem Version](https://badge.fury.io/rb/vmstat.svg)](http://badge.fury.io/rb/vmstat)
+[![Gem Version](https://badge.fury.io/rb/sanguinews.svg)](http://badge.fury.io/rb/sanguinews)
 
 Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by [newsmangler](https://github.com/madcowfred/newsmangler). Sanguinews is written in ruby(yenc encoding is done in C). Supports multithreading and SSL.
 
