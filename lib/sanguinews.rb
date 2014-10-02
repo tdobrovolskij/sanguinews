@@ -178,6 +178,10 @@ module Sanguinews
       opt.on("-v", "--verbose", "be verbose?") do
         options[:verbose] = true
       end
+      opt.on("-V", "--version", "print version information and then exit") do
+        puts Sanguinews::VERSION
+	exit
+      end
     end
 
     begin
