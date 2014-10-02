@@ -110,12 +110,7 @@ module Sanguinews
     @delay = config['reconnect_delay'].to_i
     @groups = config['groups']
     @prefix = config['prefix']
-    ssl = config['ssl']
-    if ssl == 'yes'
-      @mode = :tls
-    else
-      @mode = :original
-    end
+    config['ssl'] == 'yes' ? @mode = :tls : @mode = :original
     config['xna'] == 'yes' ? @xna = true : @xna = false
     config['nzb'] == 'yes' ? @nzb = true : @nzb = false
     config['header_check'] == 'yes' ? @header_check = true : @header_check = false
@@ -125,7 +120,7 @@ module Sanguinews
   def get_msgid(responses)
     msgid = ''
     responses.each do |response|
-      msgid = response.sub(/>.*/, '').tr("<", '') if r.end_with?('Article posted')
+      msgid = response.sub(/>.*/, '').tr("<", '') if response.end_with?('Article posted')
     end
     return msgid
   end
@@ -219,25 +214,25 @@ module Sanguinews
 
     case
     when /\A411/ === msg
-      @s.log("Invalid newsgroup specified.", stderr: true)
+      @s.log("Invalid newsgroup specified.\n", stderr: true)
     when /\A430/ === msg
-      @s.log("No such article. Maybe server is lagging...#{fileinfo}", stderr: true)
+      @s.log("No such article. Maybe server is lagging...#{fileinfo}\n", stderr: true)
     when /\A(4\d{2}\s)?437/ === msg
-      @s.log("Article rejected by server. Maybe it's too big.#{fileinfo}", stderr: true)
+      @s.log("Article rejected by server. Maybe it's too big.#{fileinfo}\n", stderr: true)
     when /\A440/ === msg
-      @s.log("Posting not allowed.", stderr: true)
+      @s.log("Posting not allowed.\n", stderr: true)
     when /\A441/ === msg
-      @s.log("Posting failed for some reason.#{fileinfo}", stderr: true)
+      @s.log("Posting failed for some reason.#{fileinfo}\n", stderr: true)
     when /\A450/ === msg
-      @s.log("Not authorized.", stderr: true)
+      @s.log("Not authorized.\n", stderr: true)
     when /\A452/ === msg
-      @s.log("Wrong username and/or password.", stderr: true)
+      @s.log("Wrong username and/or password.\n", stderr: true)
     when /\A500/ === msg
-      @s.log("Command not recognized.", stderr: true)
+      @s.log("Command not recognized.\n", stderr: true)
     when /\A501/ === msg
-      @s.log("Command syntax error.", stderr: true)
+      @s.log("Command syntax error.\n", stderr: true)
     when /\A502/ === msg
-      @s.log("Access denied.", stderr: true)
+      @s.log("Access denied.\n", stderr: true)
     end
   end
 
