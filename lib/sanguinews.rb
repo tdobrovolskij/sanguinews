@@ -338,7 +338,7 @@ module Sanguinews
 
     # "max" is needed only in dirmode
     max = files.length
-    c = 1
+    current_chunk = 1
 
     unprocessed = 0
     info_lock=Mutex.new
@@ -357,7 +357,7 @@ module Sanguinews
       end
     }
 
-    p = Pool.new(@threads)
+    thread_pool = Pool.new(@threads)
     informed = {}
 
     files.each do |file|
@@ -366,7 +366,7 @@ module Sanguinews
       informed[file.to_sym] = false
       file = FileToUpload.new(
         name: file, chunk_length: @length,
-        prefix: @prefix, current: c, last: max, filemode: filemode,
+        prefix: @prefix, current: current_chunk, last: max, filemode: filemode,
         from: @from, groups: @groups, nzb: @nzb
       )
       @s.to_upload += file.size
@@ -376,11 +376,11 @@ module Sanguinews
       end
 
       files_to_process << file
-      c += 1
+      current_chunk += 1
     end
 
     # let's give a little bit higher priority for file processing thread
-    @t = Thread.new {
+    @file_proc_thread = Thread.new {
       files_to_process.each do |file|
         @s.log("Calculating CRC32 value for #{file.name}\n", stderr: true) if @verbose
         file.file_crc32
@@ -388,16 +388,16 @@ module Sanguinews
         yencode(file, @length, messages)
       end
     }
-    @t.priority += 2
+    @file_proc_thread.priority += 2
 
     until unprocessed == 0
-      p.schedule do
+      thread_pool.schedule do
         process_and_upload(messages, pool, info_lock, informed)
       end
       unprocessed -= 1
     end
 
-    p.shutdown
+    thread_pool.shutdown
 
     until pool.empty?
       nntp = pool.pop
