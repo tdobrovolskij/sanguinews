@@ -44,7 +44,7 @@ module Sanguinews
         # We can't take all memory, so we wait
         queue.synchronize do
           @cond.wait_while do
-            queue.length > @threads * 3
+            queue.length > @config.threads * 3
           end
         end
         data = {}
@@ -73,10 +73,10 @@ module Sanguinews
     chunks = file.chunks
     basename = file.name
     # usenet works with ASCII
-    subject="#{@prefix}#{file.dir_prefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
-    msg = NntpMsg.new(@from, @groups, subject)
+    subject="#{@config.prefix}#{file.dir_prefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
+    msg = NntpMsg.new(@config.from, @config.groups, subject)
     msg.poster = "sanguinews v#{Sanguinews::VERSION} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
-    msg.xna = @xna
+    msg.xna = @config.xna
     msg.message = message.force_encoding('ASCII-8BIT')
     msg.yenc_body(chunk, chunks, crc32, pcrc32, length, fsize, basename)
     msg = msg.return_self
@@ -85,14 +85,15 @@ module Sanguinews
 
   def connect(conn_nr)
     begin
-      nntp = Net::NNTP.start(@server, @port, @username, @password, @mode)
+      nntp = Net::NNTP.start(
+	@config.server, @config.port, @config.username, @config.password, @config.mode)
     rescue
-      @s.log([$!, $@], stderr: true) if @debug
-      if @verbose
+      @s.log([$!, $@], stderr: true) if @config.debug
+      if @config.verbose
         parse_error($!.to_s)
         @s.log("Connection nr. #{conn_nr} has failed. Reconnecting...\n", stderr: true)
       end
-      sleep @delay
+      sleep @config.delay
       retry
     end
     return nntp
@@ -165,42 +166,42 @@ module Sanguinews
     begin
       response = nntp.post msg
       msgid = get_msgid(response)
-      if @header_check
+      if @config.header_check
         sleep check_delay
         nntp.stat("<#{msgid}>")
       end
     rescue
-      @s.log([$!, $@], stderr: true) if @debug
-      if @verbose
+      @s.log([$!, $@], stderr: true) if @config.debug
+      if @config.verbose
         parse_error($!.to_s, file: basename, chunk: chunk)
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
       end
-      sleep @delay
+      sleep @config.delay
       check_delay += 4
       retry
     end
 
-    if @verbose
+    if @config.verbose
       @s.log("Uploaded chunk Nr:#{chunk}\n", stderr: true)
     end
 
     @s.done(length)
     @s.uploaded += full_size
-    if @nzb
+    if @config.nzb
       file.write_segment_info(length, chunk, msgid)
     end
     nntp_pool.push(nntp)
   end
 
   def run!
-    @config = Config.new
+    @config = Config.new(ARGV)
+    files = @config.files
 
     # skip hidden files
-    if !filemode
-      directory = directory + "/" unless directory.end_with?('/')
-      Dir.foreach(directory) do |item|
+    if !@config.filemode
+      Dir.foreach(@config.directory) do |item|
         next if item.start_with?('.')
-        files << directory+item
+        files << @config.directory+item
       end
     end
 
@@ -219,13 +220,13 @@ module Sanguinews
 
     pool = Queue.new
     Thread.new {
-      @threads.times do |conn_nr|
+      @config.threads.times do |conn_nr|
         nntp = connect(conn_nr)
         pool.push(nntp)
       end
     }
 
-    thread_pool = Pool.new(@threads)
+    thread_pool = Pool.new(@config.threads)
     informed = {}
 
     files.each do |file|
@@ -233,9 +234,9 @@ module Sanguinews
 
       informed[file.to_sym] = false
       file = FileToUpload.new(
-        name: file, chunk_length: @length,
-        prefix: @prefix, current: current_chunk, last: max, filemode: filemode,
-        from: @from, groups: @groups, nzb: @nzb
+        name: file, chunk_length: @config.length, prefix: @config.prefix,
+	current: @config.current_chunk, last: max, filemode: @config.filemode,
+	from: @config.from, groups: @config.groups, nzb: @config.nzb
       )
       @s.to_upload += file.size
 
@@ -253,7 +254,7 @@ module Sanguinews
         @s.log("Calculating CRC32 value for #{file.name}\n", stderr: true) if @verbose
         file.file_crc32
         @s.log("Encoding #{file.name}\n")
-        yencode(file, @length, messages)
+        yencode(file, @config.length, messages)
       end
     }
     @file_proc_thread.priority += 2

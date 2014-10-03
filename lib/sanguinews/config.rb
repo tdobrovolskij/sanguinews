@@ -1,6 +1,6 @@
 #######################################################################
-# Config -  specifically for sanguinews
-# Copyright (c) 2013, Tadeus Dobrovolskij
+# Config - class designed specifically for sanguinews
+# Copyright (c) 2013-2014, Tadeus Dobrovolskij
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -20,8 +20,8 @@ module Sanguinews
     attr_reader :config, :data
 
     %w(username password from connections
-       article_size reconnect_delay groups prefix 
-       ssl xna nzb header_check debug filemode).each do |meth|
+       article_size reconnect_delay groups prefix ssl
+       xna nzb header_check verbose debug filemode files directory).each do |meth|
       define_method(meth) { @data[meth.to_sym] }
     end
 
@@ -31,7 +31,7 @@ module Sanguinews
 	value = true if value == 'yes'
 	value = false if value == 'no'
 	value = value.to_i if %(connections article_size reconnect_delay).include? value
-	@data[key.to_s] = value
+	@data[key.to_s] ||= value
       end
     end
 
@@ -39,7 +39,7 @@ module Sanguinews
       self.ssl ? :tls : :original
     end
 
-    def parse_options(args)
+    def parse_options!(args)
       # version and legal info presented to user
       banner = []
       banner << ""
@@ -48,9 +48,6 @@ module Sanguinews
       banner << "sanguinews is a simple nntp(usenet) binary poster. It supports multithreading and SSL. More info in README."
       banner << ""
       # option parser
-      options = {}
-      options[:filemode] = false
-      options[:files] = []
   
       opt_parser = OptionParser.new do |opt|
         opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY] | -f FILE1..[FILEX]"
@@ -58,17 +55,17 @@ module Sanguinews
         opt.separator  "Options"
   
         opt.on("-c", "--config CONFIG", "use different config file") do |cfg|
-          options[:config] = cfg
+          @config = cfg
         end
         opt.on("-C", "--check", "check headers while uploading; slow but reliable") do
-          options[:header_check] = true
+          @data[:header_check] = true
         end
         opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
-          options[:filemode] = true
-          options[:files] << file
+          @data[:filemode] = true
+          @data[:files] << file
         end
         opt.on("-g", "--groups GROUP_LIST", "use these groups(comma separated) for upload") do |group_list|
-          options[:groups] = group_list
+          @data[:groups] = group_list
         end
         opt.on("-h", "--help", "help") do
           banner.each do |msg|
@@ -79,13 +76,13 @@ module Sanguinews
           exit
         end
         opt.on("-p", "--password PASSWORD", "use PASSWORD as your password(overwrites config file)") do |password|
-          options[:password] = password
+          @data[:password] = password
         end
         opt.on("-u", "--user USERNAME", "use USERNAME as your username(overwrites config file)") do |username|
-          options[:username] = username
+          @data[:username] = username
         end
         opt.on("-v", "--verbose", "be verbose?") do
-          options[:verbose] = true
+          @data[:verbose] = true
         end
         opt.on("-V", "--version", "print version information and then exit") do
           puts Sanguinews::VERSION
@@ -100,17 +97,18 @@ module Sanguinews
         exit 1
       end
   
-      options[:directory] = args[0] unless options[:filemode]
+      @data[:directory] = args[0] unless @data[:filemode]
+      @data[:directory] += '/' if @data[:directory] && !@data[:directory].end_with?('/')
   
       # in file mode treat every additional parameter as a file
-      if !args.empty? && options[:filemode]
+      if !args.empty? && @data[:filemode]
         args.each do |file|
-          options[:files] << file.to_s
+          @data[:files] << file.to_s
         end
       end
   
       # exit when no file list is provided
-      if !options[:directory] && options[:files].empty?
+      if !@data[:directory] && @data[:files].empty?
         puts "You need to specify something to upload!"
         puts opt_parser
         exit 1
@@ -119,18 +117,21 @@ module Sanguinews
       return options
     end
 
-    def initialize
+    def initialize(args)
+      @data = {}
+      @data[:filemode] = false
+      @data[:files] = []
+
+      parse_options!(args)
+
       # Parse options in config file
-      config = "~/.sanguinews.conf"
-      config = File.expand_path(config)
+      config = File.expand_path("~/.sanguinews.conf")
       # variable to store if config was parsed
       saw_config = false
       if File.exist?(config)
         saw_config = true
         parse_config(config)
       end
-
-      options = parse_options(ARGV)
 
       optconfig = options[:config]
       optconfig ||= ''
