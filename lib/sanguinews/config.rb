@@ -98,9 +98,6 @@ module Sanguinews
         exit 1
       end
   
-      @data[:directory] = args[0] unless @data[:filemode]
-      @data[:directory] += '/' if @data[:directory] && !@data[:directory].end_with?('/')
-  
       # in file mode treat every additional parameter as a file
       if !args.empty? && @data[:filemode]
         args.each do |file|
@@ -109,10 +106,14 @@ module Sanguinews
       end
   
       # exit when no file list is provided
-      if !@data[:directory] && @data[:files].empty?
-        puts "You need to specify something to upload!"
-        puts opt_parser
-        exit 1
+      if @data[:files].empty?
+	if @data[:filemode] || args.empty?
+          puts "You need to specify something to upload!"
+          puts opt_parser
+          exit 1
+	else
+	  args[0].end_with?('/') ? @data[:directory] = args[0] : @data[:directory] = args[0] + '/'
+        end
       end
   
     end
