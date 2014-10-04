@@ -25,6 +25,6 @@ Gem::Specification.new do |s|
   s.extensions << "ext/yencoded/extconf.rb"
 
   s.files          = Dir.glob("ext/**/*.{c,rb,h}") +
-            Dir.glob("lib/**/*.rb")
+            Dir.glob("lib/**/*.rb") + Dir.glob("*.conf")
   s.executables	  = 'sanguinews'
 end

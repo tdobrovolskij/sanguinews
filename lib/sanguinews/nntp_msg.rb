@@ -22,17 +22,14 @@ module Sanguinews
   class NntpMsg
     attr_accessor :message, :from, :groups, :subject, :poster, :date, :xna
   
-    def initialize(from, groups, subject, message='', date=nil, poster=nil)
+    def initialize(from, groups, subject, message='', **opts)
       @from = from
       @groups = groups
       @subject = subject
       @message = message
-      if date.nil?
-        @date = DateTime.now().strftime('%a, %d %b %Y %T %z')
-      else
-        @date = date
-      end
-      @poster = poster if !poster.nil?
+      @date = opts[:date] if opts[:date]
+      @date ||= DateTime.now().strftime('%a, %d %b %Y %T %z')
+      @poster = opts[:poster] if opts[:poster]
     end
   
     def create_header
@@ -40,7 +37,7 @@ module Sanguinews
       sio.puts "From: #{@from}"
       sio.puts "Newsgroups: #{@groups}"
       sio.puts "Subject: #{@subject}"
-      sio.puts "X-Newsposter: #{@poster}" unless poster.nil?
+      sio.puts "X-Newsposter: #{@poster}" if @poster
       sio.puts "X-No-Archive: yes" if @xna
       sio.puts "Date: #{@date}"
       sio.puts
@@ -72,7 +69,6 @@ module Sanguinews
     def return_self
       header = self.create_header
       header << @message
-      return header
     end
   
     def size

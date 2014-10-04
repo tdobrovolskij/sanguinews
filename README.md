@@ -1,5 +1,6 @@
 sanguinews
 ==========
+[![Gem Version](https://badge.fury.io/rb/sanguinews.svg)](http://badge.fury.io/rb/sanguinews)
 
 Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by [newsmangler](https://github.com/madcowfred/newsmangler). Sanguinews is written in ruby(yenc encoding is done in C). Supports multithreading and SSL.
 
@@ -19,11 +20,12 @@ Now you can simply install `sanguinews` as a gem:
 
 How to use
 ==========
-Copy and rename sample.conf to your home directory:
+  You will get a sample config in your home directory when you run sanguinews for the first time. Open it in your favourite text editor and adjust accordingly:
 
-    cp sample.conf ~/.sanguinews.conf
+    vi ~/.sanguinews.conf
 
-Adjust it with you favourite text editor. I hope that no explanation will be needed.
+Hopefully comments inside will explain everything.
+
 To upload a file:
 
     sanguinews -f file_to_upload
@@ -45,6 +47,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.61 - Users will get sample config in their home directory now.
 * 0.60 - Complete refactoring. Sanguinews is distributed as a gem now.
 * 0.57 - More user friendly error messages. No need for debug mode for regular user.
 * 0.56 - Debug and header checking options in config.

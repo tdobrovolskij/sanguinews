@@ -65,11 +65,8 @@ module Sanguinews
         until self.eof?
           f = self.read(@@max_mem)
           crc32 = Zlib.crc32(f, 0)
-          if fcrc32.nil?
-            fcrc32 = crc32
-          else
-            fcrc32 = Zlib.crc32_combine(fcrc32, crc32, f.size)
-          end
+          fcrc32 &&= Zlib.crc32_combine(fcrc32, crc32, f.size)
+          fcrc32 ||= crc32
         end
         self.rewind
         fcrc32.to_s(16)
@@ -99,7 +96,7 @@ module Sanguinews
     end
   
     def max_mem
-      if @@max_mem.nil?
+      @@max_mem ||= begin
         memory = Vmstat.memory
         @@max_mem = (memory[:free] * memory[:pagesize] * 0.1).floor
       end
