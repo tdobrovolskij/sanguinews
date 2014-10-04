@@ -44,7 +44,7 @@ module Sanguinews
         # We can't take all memory, so we wait
         queue.synchronize do
           @cond.wait_while do
-            queue.length > @config.threads * 3
+            queue.length > @config.connections * 3
           end
         end
         data = {}
@@ -93,7 +93,7 @@ module Sanguinews
         parse_error($!.to_s)
         @s.log("Connection nr. #{conn_nr} has failed. Reconnecting...\n", stderr: true)
       end
-      sleep @config.delay
+      sleep @config.reconnect_delay
       retry
     end
     return nntp
@@ -176,7 +176,7 @@ module Sanguinews
         parse_error($!.to_s, file: basename, chunk: chunk)
         @s.log("Upload of chunk #{chunk} from file #{basename} unsuccessful. Retrying...\n", stderr: true)
       end
-      sleep @config.delay
+      sleep @config.reconnect_delay
       check_delay += 4
       retry
     end
@@ -220,13 +220,13 @@ module Sanguinews
 
     pool = Queue.new
     Thread.new {
-      @config.threads.times do |conn_nr|
+      @config.connections.times do |conn_nr|
         nntp = connect(conn_nr)
         pool.push(nntp)
       end
     }
 
-    thread_pool = Pool.new(@config.threads)
+    thread_pool = Pool.new(@config.connections)
     informed = {}
 
     files.each do |file|
@@ -234,8 +234,8 @@ module Sanguinews
 
       informed[file.to_sym] = false
       file = FileToUpload.new(
-        name: file, chunk_length: @config.length, prefix: @config.prefix,
-	current: @config.current_chunk, last: max, filemode: @config.filemode,
+        name: file, chunk_length: @config.article_size, prefix: @config.prefix,
+	current: current_chunk, last: max, filemode: @config.filemode,
 	from: @config.from, groups: @config.groups, nzb: @config.nzb
       )
       @s.to_upload += file.size
@@ -254,7 +254,7 @@ module Sanguinews
         @s.log("Calculating CRC32 value for #{file.name}\n", stderr: true) if @verbose
         file.file_crc32
         @s.log("Encoding #{file.name}\n")
-        yencode(file, @config.length, messages)
+        yencode(file, @config.article_size, messages)
       end
     }
     @file_proc_thread.priority += 2

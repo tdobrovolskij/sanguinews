@@ -19,7 +19,7 @@ module Sanguinews
   class Config
     attr_reader :config, :data
 
-    %w(username password from connections
+    %w(username password server port from connections
        article_size reconnect_delay groups prefix ssl
        xna nzb header_check verbose debug filemode files directory).each do |meth|
       define_method(meth) { @data[meth.to_sym] }
@@ -27,11 +27,12 @@ module Sanguinews
 
     def parse_config(config)
       config = ParseConfig.new(config)
-      config.get_params().each do |key, value|
+      config.get_params().each do |key|
+	value = config[key]
 	value = true if value == 'yes'
 	value = false if value == 'no'
-	value = value.to_i if %(connections article_size reconnect_delay).include? value
-	@data[key.to_s] ||= value
+	value = value.to_i if %w(connections article_size reconnect_delay).include? key
+	@data[key.to_sym] ||= value
       end
     end
 
@@ -50,7 +51,7 @@ module Sanguinews
       # option parser
   
       opt_parser = OptionParser.new do |opt|
-        opt.banner = "Usage: #{$0} [OPTIONS] [DIRECTORY] | -f FILE1..[FILEX]"
+        opt.banner = "Usage: sanguinews [OPTIONS] [DIRECTORY] | -f FILE1..[FILEX]"
         opt.separator  ""
         opt.separator  "Options"
   
@@ -114,7 +115,6 @@ module Sanguinews
         exit 1
       end
   
-      return options
     end
 
     def initialize(args)
@@ -125,31 +125,18 @@ module Sanguinews
       parse_options!(args)
 
       # Parse options in config file
-      config = File.expand_path("~/.sanguinews.conf")
-      # variable to store if config was parsed
-      saw_config = false
+      if @data[:config] && File.exist?(File.expand_path(@data[:config]))
+	config = @data[:config]
+      else
+	config = File.expand_path("~/.sanguinews.conf")
+      end
+
       if File.exist?(config)
-        saw_config = true
-        parse_config(config)
+	parse_config(config)
+      else
+	puts "No config specified!"
+	exit 1
       end
-
-      optconfig = options[:config]
-      optconfig ||= ''
-      if !File.exist?(optconfig) && !saw_config
-        puts "No config information specified. Aborting..."
-        exit
-      end
-      parse_config(optconfig) if File.exist?(optconfig)
-
-      options[:verbose] ? @verbose = true : @verbose = false
-      @header_check = true if options[:header_check]
-      filemode = options[:filemode]
-
-      @username = options[:username] if options[:username]
-      @password = options[:password] if options[:password]
-      @groups = options[:groups] if options[:groups]
-      directory = options[:directory] unless filemode
-      files = options[:files]
     end
   
   end
