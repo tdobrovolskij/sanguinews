@@ -119,10 +119,15 @@ module Sanguinews
     end
 
     def config_gen
+      config = File.expand_path('~/.sanguinews.conf')
+      if File.exist?(config)
+	puts "No config specified!"
+	exit 1
+      end
       puts "It looks like you are launching sanguinews for the first time."
       `cp #{File.expand_path(File.dirname(__FILE__)) + '/../../sample.conf'} ~/.sanguinews.conf`
       puts "Sample config was copied to your home directory."
-      puts "Please edit #{File.expand_path('~/.sanguinews.conf')} in your favourite text editor."
+      puts "Please edit #{config} in your favourite text editor."
       puts "Relaunch the application when ready."
       exit
     end
