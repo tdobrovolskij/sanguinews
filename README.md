@@ -47,6 +47,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.62 - CRC32 calculation is performed during yencoding now.
 * 0.61 - Users will get sample config in their home directory now.
 * 0.60 - Complete refactoring. Sanguinews is distributed as a gem now.
 * 0.57 - More user friendly error messages. No need for debug mode for regular user.
