@@ -44,6 +44,7 @@ CREDITS
 * [Sam "madgeekfiend" Contapay](https://github.com/madgeekfiend) for inspiration/ideas from his [yEnc](https://github.com/madgeekfiend/yenc) project.
 * [Kim Burgestrand](https://github.com/Burgestrand) for his [thread-pool library](https://gist.github.com/Burgestrand/2040175).
 * [john3voltas](https://github.com/john3voltas) for helping with excess authentication bug(fixed in v0.51) and some proofreading.
+* [Stephan Brumme](http://stephan-brumme.com/aboutme/vitae.html) for his [wonderful explanation of CRC32 algorithms](http://create.stephan-brumme.com/crc32/).
 
 HISTORY
 =======
