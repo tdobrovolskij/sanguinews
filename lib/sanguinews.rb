@@ -50,8 +50,9 @@ module Sanguinews
         data = {}
         final_data = []
         len = bindata.length
-        data[:yenc] = Yencoded::Data.yenc(bindata, len)
-        data[:crc32] = Zlib.crc32(bindata, 0).to_s(16)
+        yencoded = Yencoded::Data.yenc(bindata, len)
+        data[:crc32] = yencoded[1].to_s(16)
+        data[:yenc] = yencoded[0]
         data[:length] = len
         data[:chunk] = chunk
         data[:file] = file
@@ -207,7 +208,7 @@ module Sanguinews
 
     # "max" is needed only in dirmode
     max = files.length
-    current_chunk = 1
+    current_file = 1
 
     unprocessed = 0
     info_lock=Mutex.new
@@ -235,7 +236,7 @@ module Sanguinews
       informed[file.to_sym] = false
       file = FileToUpload.new(
         name: file, chunk_length: @config.article_size, prefix: @config.prefix,
-	current: current_chunk, last: max, filemode: @config.filemode,
+	current: current_file, last: max, filemode: @config.filemode,
 	from: @config.from, groups: @config.groups, nzb: @config.nzb
       )
       @s.to_upload += file.size
@@ -245,7 +246,7 @@ module Sanguinews
       end
 
       files_to_process << file
-      current_chunk += 1
+      current_file += 1
     end
 
     # let's give a little bit higher priority for file processing thread
