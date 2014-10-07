@@ -199,7 +199,7 @@ module Sanguinews
     files = @config.files
 
     # skip hidden files
-    if !@config.filemode
+    if !@config.filemode && Dir.exists?(@config.directory)
       Dir.foreach(@config.directory) do |item|
         next if item.start_with?('.')
         files << @config.directory+item
@@ -247,6 +247,11 @@ module Sanguinews
 
       files_to_process << file
       current_file += 1
+    end
+
+    if files_to_process.empty?
+      puts "Upload list is empty! Make sure that you spelled file/directory name(s) correctly!"
+      exit 1
     end
 
     # let's give a little bit higher priority for file processing thread
