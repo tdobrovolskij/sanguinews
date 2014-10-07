@@ -139,6 +139,51 @@ module Sanguinews
     end
   end
 
+  def create_upload_list(info_lock)
+    files = @config.files
+
+    # skip hidden files
+    if !@config.filemode && Dir.exists?(@config.directory)
+      Dir.foreach(@config.directory) do |item|
+        next if item.start_with?('.')
+        files << @config.directory+item
+      end
+    end
+
+    files_to_process = []
+    informed = {}
+    unprocessed = 0
+    current_file = 1
+    # "max" is needed only in dirmode
+    max = files.length
+
+    files.each do |file|
+      next if !File.file?(file)
+
+      informed[file.to_sym] = false
+      file = FileToUpload.new(
+        name: file, chunk_length: @config.article_size, prefix: @config.prefix,
+	current: current_file, last: max, filemode: @config.filemode,
+	from: @config.from, groups: @config.groups, nzb: @config.nzb
+      )
+      @s.to_upload += file.size
+
+      info_lock.synchronize do
+        unprocessed += file.chunks
+      end
+
+      files_to_process << file
+      current_file += 1
+    end
+
+    if files_to_process.empty?
+      puts "Upload list is empty! Make sure that you spelled file/directory name(s) correctly!"
+      exit 1
+    end
+    return files_to_process, informed, unprocessed
+  end
+
+
   def process_and_upload(queue, nntp_pool, info_lock, informed)
     stuff = queue.pop
     queue.synchronize do
@@ -196,26 +241,10 @@ module Sanguinews
 
   def run!
     @config = Config.new(ARGV)
-    files = @config.files
-
-    # skip hidden files
-    if !@config.filemode
-      Dir.foreach(@config.directory) do |item|
-        next if item.start_with?('.')
-        files << @config.directory+item
-      end
-    end
-
-    # "max" is needed only in dirmode
-    max = files.length
-    current_file = 1
-
-    unprocessed = 0
     info_lock=Mutex.new
     messages = Queue.new
     messages.extend(MonitorMixin)
     @cond = messages.new_cond
-    files_to_process = []
     @s = Speedometer.new(units: "KB", progressbar: true)
     @s.uploaded = 0
 
@@ -228,26 +257,8 @@ module Sanguinews
     }
 
     thread_pool = Pool.new(@config.connections)
-    informed = {}
 
-    files.each do |file|
-      next if !File.file?(file)
-
-      informed[file.to_sym] = false
-      file = FileToUpload.new(
-        name: file, chunk_length: @config.article_size, prefix: @config.prefix,
-	current: current_file, last: max, filemode: @config.filemode,
-	from: @config.from, groups: @config.groups, nzb: @config.nzb
-      )
-      @s.to_upload += file.size
-
-      info_lock.synchronize do
-        unprocessed += file.chunks
-      end
-
-      files_to_process << file
-      current_file += 1
-    end
+    files_to_process, informed, unprocessed = create_upload_list(info_lock)
 
     # let's give a little bit higher priority for file processing thread
     @file_proc_thread = Thread.new {
