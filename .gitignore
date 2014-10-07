@@ -1,3 +1,5 @@
 *.swp
 *.nzb
+*.gem
+tmp/
 .DS_Store
