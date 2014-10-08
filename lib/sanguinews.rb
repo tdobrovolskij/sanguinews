@@ -25,6 +25,7 @@ require 'tempfile'
 # Following non-standard gems are needed
 require 'parseconfig'
 require 'speedometer'
+require 'crc32'
 # Our library
 require_relative 'sanguinews/thread-pool'
 require_relative 'sanguinews/nntp'
