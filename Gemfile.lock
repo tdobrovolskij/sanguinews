@@ -1,8 +1,9 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    crc32 (1.0.0)
     nzb (0.2.2)
-    parseconfig (1.0.4)
+    parseconfig (1.0.6)
     rake (10.3.2)
     rake-compiler (0.9.3)
       rake
@@ -13,9 +14,10 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  crc32 (~> 1.0)
   nzb (>= 0.2.2)
   parseconfig
   rake
   rake-compiler
   speedometer (>= 0.1.2)
-  vmstat (~> 2.1.0)
+  vmstat (~> 2.1)

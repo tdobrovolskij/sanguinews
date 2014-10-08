@@ -15,7 +15,6 @@
 # with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
-require 'zlib'
 require 'nzb'
 require 'vmstat'
 
@@ -61,12 +60,10 @@ module Sanguinews
   
     def file_crc32
       @crc32 ||= begin
-        fcrc32 = nil
+        fcrc32 = 0
         until self.eof?
           f = self.read(@@max_mem)
-          crc32 = Zlib.crc32(f, 0)
-          fcrc32 &&= Zlib.crc32_combine(fcrc32, crc32, f.size)
-          fcrc32 ||= crc32
+          fcrc32 = Crc32.calculate(f, f.size, fcrc32)
         end
         self.rewind
         fcrc32.to_s(16)
