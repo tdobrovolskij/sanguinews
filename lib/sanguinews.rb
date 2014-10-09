@@ -145,9 +145,9 @@ module Sanguinews
 
     # skip hidden files
     if !@config.filemode && Dir.exists?(@config.directory)
-      Dir.foreach(@config.directory) do |item|
-        next if item.start_with?('.')
-        files << @config.directory+item
+      @config.recursive ? glob = '**/*' : glob = '*'
+      Dir.glob(@config.directory + glob) do |item|
+        files << item
       end
     end
 

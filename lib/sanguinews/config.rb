@@ -20,8 +20,8 @@ module Sanguinews
     attr_reader :config, :data
 
     %w(username password server port from connections
-       article_size reconnect_delay groups prefix ssl
-       xna nzb header_check verbose debug filemode files directory).each do |meth|
+       article_size reconnect_delay groups prefix ssl xna nzb
+       header_check verbose debug filemode files directory recursive).each do |meth|
       define_method(meth) { @data[meth.to_sym] }
     end
 
@@ -79,6 +79,9 @@ module Sanguinews
         opt.on("-p", "--password PASSWORD", "use PASSWORD as your password(overwrites config file)") do |password|
           @data[:password] = password
         end
+        opt.on("-r", "--recursive", "process all files under each directory recursively" do
+          @data[:recursive] = true
+        end
         opt.on("-u", "--user USERNAME", "use USERNAME as your username(overwrites config file)") do |username|
           @data[:username] = username
         end
@@ -130,6 +133,7 @@ module Sanguinews
     def initialize(args)
       @data = {}
       @data[:filemode] = false
+      @data[:recursive] = false
       @data[:files] = []
 
       parse_options!(args)
