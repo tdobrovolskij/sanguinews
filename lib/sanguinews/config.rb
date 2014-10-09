@@ -79,7 +79,7 @@ module Sanguinews
         opt.on("-p", "--password PASSWORD", "use PASSWORD as your password(overwrites config file)") do |password|
           @data[:password] = password
         end
-        opt.on("-r", "--recursive", "process all files under each directory recursively" do
+        opt.on("-r", "--recursive", "process all files under each directory recursively") do
           @data[:recursive] = true
         end
         opt.on("-u", "--user USERNAME", "use USERNAME as your username(overwrites config file)") do |username|
