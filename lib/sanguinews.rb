@@ -147,6 +147,7 @@ module Sanguinews
     if !@config.filemode && Dir.exists?(@config.directory)
       @config.recursive ? glob = '**/*' : glob = '*'
       Dir.glob(@config.directory + glob) do |item|
+        next unless File.file?(item)
         files << item
       end
     end
@@ -159,8 +160,6 @@ module Sanguinews
     max = files.length
 
     files.each do |file|
-      next if !File.file?(file)
-
       informed[file.to_sym] = false
       file = FileToUpload.new(
         name: file, chunk_length: @config.article_size, prefix: @config.prefix,

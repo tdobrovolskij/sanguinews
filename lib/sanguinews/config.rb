@@ -63,7 +63,7 @@ module Sanguinews
         end
         opt.on("-f", "--file FILE", "upload FILE, treat all additional parameters as files") do |file|
           @data[:filemode] = true
-          @data[:files] << file
+          @data[:files] << file if File.file?(File.expand_path(file))
         end
         opt.on("-g", "--groups GROUP_LIST", "use these groups(comma separated) for upload") do |group_list|
           @data[:groups] = group_list
@@ -104,6 +104,7 @@ module Sanguinews
       # in file mode treat every additional parameter as a file
       if !args.empty? && @data[:filemode]
         args.each do |file|
+          next unless File.file?(File.expand_path(file))
           @data[:files] << file.to_s
         end
       end
