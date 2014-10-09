@@ -48,6 +48,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.64 - Added recursive mode.
 * 0.63 - Using my own CRC32 gem now for better performance.
 * 0.62 - CRC32 calculation is performed during yencoding now.
 * 0.61 - Users will get sample config in their home directory now.
