@@ -22,10 +22,11 @@ require 'optparse'
 require 'monitor'
 require 'date'
 require 'tempfile'
+require 'zlib'
 # Following non-standard gems are needed
 require 'parseconfig'
 require 'speedometer'
-require 'crc32'
+require 'nzb'
 # Our library
 require_relative 'sanguinews/thread-pool'
 require_relative 'sanguinews/nntp'
@@ -54,7 +55,10 @@ module Sanguinews
         yencoded = Yencoded::Data.yenc(bindata, len)
 	msg = file.messages[chunk-1]
 	msg.message = yencoded[0].force_encoding('ASCII-8BIT')
-	msg.yenc_body(chunk, file.chunks, yencoded[1].to_s(16), len, file.size, file.name)
+	msg.part_crc32 = yencoded[1].to_s(16)
+	msg.length = len
+	msg.crc32 = file.file_crc32 if chunk == file.chunks
+	msg.yenc_body(chunk, file.chunks, file.size, file.name)
         final_data[0] = { message: msg.return_self, filename: file.name, chunk: chunk, length: len }
         final_data[1] = file
         queue.push(final_data)
@@ -243,8 +247,6 @@ module Sanguinews
     # let's give a little bit higher priority for file processing thread
     @file_proc_thread = Thread.new {
       files_to_process.each do |file|
-        @s.log("Calculating CRC32 value for #{file.name}\n", stderr: true) if @verbose
-        file.file_crc32
         @s.log("Encoding #{file.name}\n")
         yencode(file, @config.article_size, messages)
       end
