@@ -52,37 +52,16 @@ module Sanguinews
         final_data = []
         len = bindata.length
         yencoded = Yencoded::Data.yenc(bindata, len)
-        data[:crc32] = yencoded[1].to_s(16)
-        data[:yenc] = yencoded[0]
-        data[:length] = len
-        data[:chunk] = chunk
-        data[:file] = file
-        final_data[0] = form_message(data)
+	msg = file.messages[chunk-1]
+	msg.message = yencoded[0].force_encoding('ASCII-8BIT')
+	msg.yenc_body(chunk, file.chunks, file.crc32, yencoded[1].to_s(16), len, file.size, file.name)
+        final_data[0] = { message: msg.return_self, filename: file.name, chunk: chunk, length: len }
         final_data[1] = file
         queue.push(final_data)
+	# we do care about user's memory
+	msg.unset
         chunk += 1
      end
-  end
-
-  def form_message(data)
-    message = data[:yenc]
-    length = data[:length]
-    pcrc32 = data[:crc32]
-    file = data[:file]
-    chunk = data[:chunk]
-    crc32 = file.crc32
-    fsize = file.size
-    chunks = file.chunks
-    basename = file.name
-    # usenet works with ASCII
-    subject="#{@config.prefix}#{file.dir_prefix}\"#{basename}\" yEnc (#{chunk}/#{chunks})"
-    msg = NntpMsg.new(@config.from, @config.groups, subject)
-    msg.poster = "sanguinews v#{Sanguinews::VERSION} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
-    msg.xna = @config.xna
-    msg.message = message.force_encoding('ASCII-8BIT')
-    msg.yenc_body(chunk, chunks, crc32, pcrc32, length, fsize, basename)
-    msg = msg.return_self
-    { message: msg, filename: basename, chunk: chunk, length: length }
   end
 
   def connect(conn_nr)
@@ -164,7 +143,8 @@ module Sanguinews
       file = FileToUpload.new(
         name: file, chunk_length: @config.article_size, prefix: @config.prefix,
 	current: current_file, last: max, filemode: @config.filemode,
-	from: @config.from, groups: @config.groups, nzb: @config.nzb
+	from: @config.from, groups: @config.groups, nzb: @config.nzb,
+	prefix: @config.prefix, xna: @config.xna
       )
       @s.to_upload += file.size
 

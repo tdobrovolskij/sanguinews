@@ -29,7 +29,7 @@ module Sanguinews
       @message = message
       @date = opts[:date] if opts[:date]
       @date ||= DateTime.now().strftime('%a, %d %b %Y %T %z')
-      @poster = opts[:poster] if opts[:poster]
+      @poster = "sanguinews v#{Sanguinews::VERSION} (ruby #{RUBY_VERSION}) - https://github.com/tdobrovolskij/sanguinews"
     end
   
     def create_header
@@ -73,6 +73,15 @@ module Sanguinews
   
     def size
       return @message.length
+    end
+
+    def unset
+      @from = nil
+      @groups = nil
+      @subject = nil
+      @poster = nil
+      @date = nil
+      @message = nil
     end
   end
 end

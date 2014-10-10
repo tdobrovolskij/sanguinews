@@ -20,7 +20,7 @@ require 'vmstat'
 
 module Sanguinews
   class FileToUpload < File
-    attr_accessor :name, :chunks, :subject
+    attr_accessor :name, :chunks, :subject, :messages
     attr_reader :crc32, :nzb, :dir_prefix, :cname
   
     @@max_mem = nil
@@ -40,6 +40,12 @@ module Sanguinews
         @from = var[:from]
         @groups = var[:groups]
         nzb_init
+      end
+      @messages = []
+      @chunks.times do |x|
+	subject = "#{var[:prefix]}#{@dir_prefix}\"#{@name}\" yEnc (#{x+1}/#{@chunks})"
+	@messages[x] = NntpMsg.new(@from, @groups, subject)
+	@messages[x].xna = var[:xna]
       end
       return @name
     end
