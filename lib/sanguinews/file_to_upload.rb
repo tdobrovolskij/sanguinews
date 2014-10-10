@@ -31,7 +31,6 @@ module Sanguinews
       @name = File.basename(var[:name])
       chunk_amount(var[:chunk_length])
       common_name(var)
-      max_mem
       if var[:nzb]
         @from = var[:from]
         @groups = var[:groups]
