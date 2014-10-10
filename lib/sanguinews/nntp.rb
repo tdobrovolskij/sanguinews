@@ -399,9 +399,6 @@ module Net  #:nodoc:
 
       else
         socket = timeout(@open_timeout) { TCPSocket.open(@address, @port) }
-        @socket = InternetMessageIO.new(socket)
-        @socket.read_timeout = @read_timeout
-        @socket.debug_output = @debug_output
         # Use OpenSSL to wrap socket
         # Introduced by: Tadeus Dobrovolskij
 	if method == :tls
@@ -410,9 +407,11 @@ module Net  #:nodoc:
 	  ssl.sync_close = true
 	  ssl.connect
           @socket = InternetMessageIO.new(ssl)
-	  @socket.read_timeout = @read_timeout
-	  @socket.debug_output = @debug_output
-	end
+        else
+          @socket = InternetMessageIO.new(socket)
+        end
+	@socket.read_timeout = @read_timeout
+	@socket.debug_output = @debug_output
       end
 
       check_response(critical { recv_response() })
