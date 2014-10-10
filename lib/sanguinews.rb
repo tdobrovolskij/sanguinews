@@ -54,7 +54,7 @@ module Sanguinews
         yencoded = Yencoded::Data.yenc(bindata, len)
 	msg = file.messages[chunk-1]
 	msg.message = yencoded[0].force_encoding('ASCII-8BIT')
-	msg.yenc_body(chunk, file.chunks, file.crc32, yencoded[1].to_s(16), len, file.size, file.name)
+	msg.yenc_body(chunk, file.chunks, yencoded[1].to_s(16), len, file.size, file.name)
         final_data[0] = { message: msg.return_self, filename: file.name, chunk: chunk, length: len }
         final_data[1] = file
         queue.push(final_data)

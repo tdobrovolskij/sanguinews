@@ -20,7 +20,8 @@ require 'date'
 
 module Sanguinews
   class NntpMsg
-    attr_accessor :message, :from, :groups, :subject, :poster, :date, :xna
+    attr_accessor :message, :from, :groups, :subject, :poster, :date, :xna, :crc32
+    attr_reader :length, :part_crc32
   
     def initialize(from, groups, subject, message='', **opts)
       @from = from
@@ -46,17 +47,19 @@ module Sanguinews
       return header
     end
   
-    def yenc_body(current_part, parts, crc32, pcrc32, part_size, file_size, filename)
+    def yenc_body(current_part, parts, pcrc32, part_size, file_size, filename)
+      @length = part_size
+      @part_crc32 = pcrc32
       chunk_start = ((current_part - 1) * part_size) + 1
       chunk_end = current_part * part_size
       if (parts==1)
         headerline = "=ybegin line=128 size=#{file_size} name=#{filename}"
-        trailer = "=yend size=#{file_size} crc32=#{crc32}"
+        trailer = "=yend size=#{file_size} crc32=#{@crc32}"
       else
         headerline = "=ybegin part=#{current_part} total=#{parts} line=128 size=#{file_size} name=#{filename}\n=ypart begin=#{chunk_start} end=#{chunk_end}"
         # last part
         if (current_part == parts)
-          trailer = "=yend size=#{part_size} part=#{current_part} pcrc32=#{pcrc32} crc32=#{crc32}"
+          trailer = "=yend size=#{part_size} part=#{current_part} pcrc32=#{pcrc32} crc32=#{@crc32}"
         else
           trailer = "=yend size=#{part_size} part=#{current_part} pcrc32=#{pcrc32}"
         end
