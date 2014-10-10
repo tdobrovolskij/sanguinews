@@ -15,16 +15,12 @@
 # with this library; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 ########################################################################
-require 'nzb'
-require 'vmstat'
 
 module Sanguinews
   class FileToUpload < File
-    attr_accessor :name, :chunks, :subject
+    attr_accessor :name, :chunks, :subject, :messages
     attr_reader :crc32, :nzb, :dir_prefix, :cname
   
-    @@max_mem = nil
-    
     def initialize(var)
       @dir_prefix = ''
   
@@ -35,11 +31,16 @@ module Sanguinews
       @name = File.basename(var[:name])
       chunk_amount(var[:chunk_length])
       common_name(var)
-      max_mem
       if var[:nzb]
         @from = var[:from]
         @groups = var[:groups]
         nzb_init
+      end
+      @messages = []
+      @chunks.times do |x|
+	subject = "#{var[:prefix]}#{@dir_prefix}\"#{@name}\" yEnc (#{x+1}/#{@chunks})"
+	@messages[x] = NntpMsg.new(@from, @groups, subject)
+	@messages[x].xna = var[:xna]
       end
       return @name
     end
@@ -59,15 +60,12 @@ module Sanguinews
     end
   
     def file_crc32
-      @crc32 ||= begin
-        fcrc32 = 0
-        until self.eof?
-          f = self.read(@@max_mem)
-          fcrc32 = Crc32.calculate(f, f.size, fcrc32)
-        end
-        self.rewind
-        fcrc32.to_s(16)
+      fcrc32 = false
+      @messages.each do |message|
+	fcrc32 &&= Zlib.crc32_combine(fcrc32, message.part_crc32.to_i(16), message.length)
+	fcrc32 ||= message.part_crc32.to_i(16)
       end
+      @crc32 = fcrc32.to_s(16)
     end
   
     private
@@ -92,12 +90,5 @@ module Sanguinews
       @nzb.write_header
     end
   
-    def max_mem
-      @@max_mem ||= begin
-        memory = Vmstat.memory
-        @@max_mem = (memory[:free] * memory[:pagesize] * 0.1).floor
-      end
-      @@max_mem
-    end
   end
 end
