@@ -53,17 +53,17 @@ module Sanguinews
         final_data = []
         len = bindata.length
         yencoded = Yencoded::Data.yenc(bindata, len)
-	msg = file.messages[chunk-1]
-	msg.message = yencoded[0].force_encoding('ASCII-8BIT')
-	msg.part_crc32 = yencoded[1].to_s(16)
-	msg.length = len
-	msg.crc32 = file.file_crc32 if chunk == file.chunks
-	msg.yenc_body(chunk, file.chunks, file.size, file.name)
+        msg = file.messages[chunk-1]
+        msg.message = yencoded[0].force_encoding('ASCII-8BIT')
+        msg.part_crc32 = yencoded[1].to_s(16)
+        msg.length = len
+        msg.crc32 = file.file_crc32 if chunk == file.chunks
+        msg.yenc_body(chunk, file.chunks, file.size, file.name)
         final_data[0] = { message: msg.return_self, filename: file.name, chunk: chunk, length: len }
         final_data[1] = file
         queue.push(final_data)
-	# we do care about user's memory
-	msg.unset
+        # we do care about user's memory
+        msg.unset
         chunk += 1
      end
   end
