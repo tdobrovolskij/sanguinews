@@ -148,7 +148,7 @@ module Sanguinews
         name: file, chunk_length: @config.article_size, prefix: @config.prefix,
 	current: current_file, last: max, filemode: @config.filemode,
 	from: @config.from, groups: @config.groups, nzb: @config.nzb,
-	prefix: @config.prefix, xna: @config.xna
+	xna: @config.xna
       )
       @s.to_upload += file.size
 
