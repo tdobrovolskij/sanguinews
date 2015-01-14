@@ -1,0 +1,25 @@
+PATH
+  remote: .
+  specs:
+    sanguinews (0.70)
+      nzb (~> 0.2, >= 0.2.2)
+      parseconfig (~> 1.0)
+      speedometer (~> 0.1, >= 0.1.2)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    nzb (0.2.2)
+    parseconfig (1.0.6)
+    rake (10.4.2)
+    rake-compiler (0.9.5)
+      rake
+    speedometer (0.1.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  rake (~> 10.3)
+  rake-compiler (~> 0.9)
+  sanguinews!
