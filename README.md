@@ -45,10 +45,12 @@ CREDITS
 * [Kim Burgestrand](https://github.com/Burgestrand) for his [thread-pool library](https://gist.github.com/Burgestrand/2040175).
 * [john3voltas](https://github.com/john3voltas) for helping with excess authentication bug(fixed in v0.51) and some proofreading.
 * [Stephan Brumme](http://stephan-brumme.com/aboutme/vitae.html) for his [wonderful explanation of CRC32 algorithms](http://create.stephan-brumme.com/crc32/).
+* [Brad Landers](https://github.com/bradland) for his help with #31.
 
 HISTORY
 =======
 * 0.70 - Logic optimization. Performance boost.
+  * Patch 1 - removed unneeded dependencies and a duplicate hash parameter.
 * 0.64 - Added recursive mode.
 * 0.63 - Using my own CRC32 gem now for better performance.
 * 0.62 - CRC32 calculation is performed during yencoding now.
@@ -77,7 +79,7 @@ HISTORY
 * 0.35 - Minor performance tweaks.
 * 0.34 - No more errors if there is at least one config.
 * 0.33 - There is now an option to specify config file.
-* 0.32 - Multiple files can be specified. 
+* 0.32 - Multiple files can be specified.
 * 0.30 - Nzb files can now be generated.
 * 0.22 - Less verbosity in normal mode. More helpful help.
 * 0.20 - Directories can be uploaded as well.
