@@ -49,6 +49,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.71 - Files will be sorted by name now.
 * 0.70 - Logic optimization. Performance boost.
   * Patch 1 - removed unneeded dependencies and a duplicate hash parameter.
 * 0.64 - Added recursive mode.

@@ -1,3 +1,3 @@
 module Sanguinews
-    VERSION = "0.70.1"
+    VERSION = "0.71"
 end
