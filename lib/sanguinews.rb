@@ -34,36 +34,60 @@ require_relative 'sanguinews/yencoded'
 require_relative 'sanguinews/config'
 require_relative 'sanguinews/version'
 
+# lets add additional property to the Thread class
+module SanguinewsThread
+  refine Thread do
+    attr_reader :awoken
+
+    def wakeup
+      @awoken = true
+      super
+    end
+
+    def awoken
+      @awoken = false if @awoken.nil?
+      @awoken
+    end
+  end
+end
+
 module Sanguinews
+  using SanguinewsThread
+
   module_function
   # Method returns yenc encoded string and crc32 value
-  def yencode(file, length, queue)
-     chunk = 1
-     until file.eof?
-        bindata = file.read(length)
-        # We can't take all memory, so we wait
-        queue.synchronize do
-          @cond.wait_while do
-            queue.length > @config.connections * 3
-          end
+  def yencode(file, length, queue, thread)
+    chunk = 1
+    @s.log("Encoding #{file.name}\n") if @config.debug
+    until file.eof?
+      bindata = file.read(length)
+      # We can't take all memory, so we wait
+      queue.synchronize do
+        @cond.wait_while do
+          queue.length > @config.connections * 3
         end
-        data = {}
-        final_data = []
-        len = bindata.length
-        yencoded = Yencoded::Data.yenc(bindata, len)
-        msg = file.messages[chunk-1]
-        msg.message = yencoded[0].force_encoding('ASCII-8BIT')
-        msg.part_crc32 = yencoded[1].to_s(16)
-        msg.length = len
-        msg.crc32 = file.file_crc32 if chunk == file.chunks
-        msg.yenc_body(chunk, file.chunks, file.size, file.name)
-        final_data[0] = { message: msg.return_self, filename: file.name, chunk: chunk, length: len }
-        final_data[1] = file
-        queue.push(final_data)
-        # we do care about user's memory
-        msg.unset
-        chunk += 1
-     end
+      end
+      data = {}
+      final_data = []
+      len = bindata.length
+      yencoded = Yencoded::Data.yenc(bindata, len)
+      msg = file.messages[chunk-1]
+      msg.message = yencoded[0].force_encoding('ASCII-8BIT')
+      msg.part_crc32 = yencoded[1].to_s(16)
+      msg.length = len
+      msg.crc32 = file.file_crc32 if chunk == file.chunks
+      msg.yenc_body(chunk, file.chunks, file.size, file.name)
+      final_data[0] = { message: msg.return_self, filename: file.name, chunk: chunk, length: len }
+      final_data[1] = file
+      queue.push(final_data)
+      # start processing next file
+      if file.chunks - chunk <= @config.connections && thread + 1 < @file_proc_threads.size
+        @file_proc_threads[thread+1].wakeup unless @file_proc_threads[thread+1].awoken
+      end
+      # we do care about user's memory
+      msg.unset
+      chunk += 1
+    end
   end
 
   def connect(conn_nr)
@@ -209,9 +233,7 @@ module Sanguinews
       retry
     end
 
-    if @config.verbose
-      @s.log("Uploaded chunk Nr:#{chunk}\n", stderr: true)
-    end
+    @s.log("Uploaded chunk Nr:#{chunk}\n", stderr: true) if @config.verbose
 
     @s.done(length)
     @s.uploaded += full_size
@@ -242,14 +264,15 @@ module Sanguinews
 
     files_to_process, informed, unprocessed = create_upload_list(info_lock)
 
-    # let's give a little bit higher priority for file processing thread
-    @file_proc_thread = Thread.new {
-      files_to_process.each do |file|
-        @s.log("Encoding #{file.name}\n")
-        yencode(file, @config.article_size, messages)
-      end
-    }
-    @file_proc_thread.priority += 2
+    @file_proc_threads = []
+    thread_nr = 0
+    files_to_process.each do |file|
+      @file_proc_threads[thread_nr] = Thread.new(thread_nr) { |x|
+        Thread.stop unless x == 0
+        yencode(file, @config.article_size, messages, x)
+      }
+      thread_nr += 1
+    end
 
     until unprocessed == 0
       thread_pool.schedule do
