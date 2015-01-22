@@ -49,6 +49,7 @@ CREDITS
 
 HISTORY
 =======
+* 0.80 - Encoding jobs are being queued now and started as soon as previous one is close to the end. Should result in stable upload speed.
 * 0.71 - Files will be sorted by name now.
 * 0.70 - Logic optimization. Performance boost.
   * Patch 1 - removed unneeded dependencies and a duplicate hash parameter.

@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.description = %q{Sanguinews is a simple, commandline client for Usenet(nntp) uploads. Inspired by newsmangler. Supports multithreading and SSL.}
   s.required_ruby_version = ">= 2.0"
 
-  s.add_runtime_dependency "speedometer", '~> 0.1', '>= 0.1.2'
+  s.add_runtime_dependency "speedometer", '~> 0.1', '>= 0.1.3'
   s.add_runtime_dependency "nzb", "~> 0.2", '>= 0.2.2'
   s.add_runtime_dependency "parseconfig", "~> 1.0"
 
