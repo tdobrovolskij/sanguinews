@@ -12,7 +12,7 @@ Because of some C code, C compiler is needed(GCC or Apple's clang). On Debian-ba
 
 Debian systems need also additional ruby development headers:
 
-    apt-get install ruby-dev
+    apt-get install ruby ruby-dev
 
 Now you can simply install `sanguinews` as a gem:
 
