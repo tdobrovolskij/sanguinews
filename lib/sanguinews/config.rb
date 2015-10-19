@@ -137,8 +137,6 @@ module Sanguinews
       @data[:recursive] = false
       @data[:files] = []
 
-      parse_options!(args)
-
       # Parse options in config file
       if @data[:config] && File.exist?(File.expand_path(@data[:config]))
 	config = @data[:config]
@@ -151,6 +149,10 @@ module Sanguinews
       else
 	config_gen
       end
+
+      # Parse options from command line
+      parse_options!(args)
+
     end
   
   end
